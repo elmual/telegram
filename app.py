@@ -67,6 +67,9 @@ def get_weekly_report():
 
     df = pd.DataFrame(all_answers)
 
+    # Burada yalnız həftənin 1-ci-5-ci günlərindəki cavabları saxlayırıq
+    df = df[df["timestamp"].apply(lambda x: x.weekday() in range(0, 5))]  # 0=Mon ... 4=Fri
+
     # students dictionary
     students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
 
