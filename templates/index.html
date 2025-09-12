@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hesabat</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 30px;
+      }
+      h1,
+      h2 {
+        color: #333;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 30px;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background-color: #f0f0f0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📊 ASPA GROUP education center</h1>
+    <h2>Müəllim: Elməddin Əhmədzadə</h2>
+    <br>
+
+    <h2>📅 Həftəlik Hesabat</h2>
+    <table>
+      <tr>
+        <th>Sıra</th>
+        <th>Ad</th>
+        <th>Sual sayı</th>
+        <th>Düz</th>
+        <th>Səhv</th>
+        <th>Faiz</th>
+      </tr>
+      {% for row in weekly %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ row.user_name }}</td>
+        <td>{{ row.sual_sayi }}</td>
+        <td>{{ row.duz }}</td>
+        <td>{{ row.sehv }}</td>
+        <td>{{ row.faiz }}%</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h2>🌍 Ümumi Hesabat</h2>
+    <table>
+      <tr>
+        <th>Sıra</th>
+        <th>Ad</th>
+        <th>Sual sayı</th>
+        <th>Düz</th>
+        <th>Səhv</th>
+        <th>Faiz</th>
+      </tr>
+      {% for row in overall %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ row.user_name }}</td>
+        <td>{{ row.sual_sayi }}</td>
+        <td>{{ row.duz }}</td>
+        <td>{{ row.sehv }}</td>
+        <td>{{ row.faiz }}%</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </body>
+</html>
