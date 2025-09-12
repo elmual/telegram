@@ -6,17 +6,24 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# --- MongoDB qoşulma ---
+# --- MongoDB qoşulmalar ---
 MONGO_URI = "mongodb+srv://erlams:erlams423@cluster0.wwpua.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
-db = client["telegram_bot_10"]
-answers_collection = db["answers"]
-students_collection = db["students"]
+
+# telegram_bot_10
+db10 = client["telegram_bot_10"]
+answers10 = db10["answers"]
+students10 = db10["students"]
+
+# telegram_bot_11
+db11 = client["telegram_bot_11"]
+answers11 = db11["answers"]
+students11 = db11["students"]
 
 # ------------------ KÖMƏKÇİ FUNKSİYALAR ------------------
 
-def _generate_report(df):
-    """Verilmiş DataFrame-dən hesabat hazırlayır."""
+def _generate_report(df, students):
+    """DataFrame və students dictionary-dən hesabat hazırla."""
     if df.empty:
         return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
 
@@ -30,9 +37,6 @@ def _generate_report(df):
 
     report["sehv"] = report["sual_sayi"] - report["duz"]
     report["faiz"] = (report["duz"] / report["sual_sayi"] * 100).round(0).astype(int)
-
-    # ---- STUDENTS KOLLEKSİYASI İLƏ ƏLAVƏ EMAL ----
-    students = {s["user_id"]: s for s in students_collection.find()}
 
     # full_name varsa, göstər
     report["user_name"] = report.apply(
@@ -52,25 +56,36 @@ def _generate_report(df):
 
 def get_weekly_report():
     one_week_ago = datetime.now() - timedelta(days=7)
-    cursor = answers_collection.find({"timestamp": {"$gte": one_week_ago}})
-    answers = list(cursor)
+    
+    # hər iki bazadan weekly data
+    answers_10 = list(answers10.find({"timestamp": {"$gte": one_week_ago}}))
+    answers_11 = list(answers11.find({"timestamp": {"$gte": one_week_ago}}))
+    all_answers = answers_10 + answers_11
 
-    if not answers:
+    if not all_answers:
         return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
 
-    df = pd.DataFrame(answers)
-    return _generate_report(df)
+    df = pd.DataFrame(all_answers)
+
+    # students dictionary
+    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
+
+    return _generate_report(df, students)
 
 
 def get_overall_report():
-    cursor = answers_collection.find()
-    answers = list(cursor)
+    # hər iki bazadan bütün data
+    answers_10 = list(answers10.find())
+    answers_11 = list(answers11.find())
+    all_answers = answers_10 + answers_11
 
-    if not answers:
+    if not all_answers:
         return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
 
-    df = pd.DataFrame(answers)
-    return _generate_report(df)
+    df = pd.DataFrame(all_answers)
+    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
+
+    return _generate_report(df, students)
 
 # ------------------ FLASK ROUTE ------------------
 
