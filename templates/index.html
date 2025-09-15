@@ -54,6 +54,7 @@
       </div>
     </nav>
 
+    <!-- Karusel -->
     <div
       id="carouselExampleCaptions"
       class="carousel slide container"
@@ -150,10 +151,85 @@
       </button>
     </div>
 
-    <div class="container my-5 img-thumbnail">
-      <h1 class="my-5">📊 ASPA GROUP education center</h1>
-      <h3 class="mb-5">Müəllim: Elməddin Əhmədzadə</h3>
-      <div class="accordion" id="accordionExample">
+    <!-- Gündəlik Hesabat -->
+    <div class="container img-thumbnail mt-4">
+      <h2 id="daily" style="scroll-margin-top: 110px" class="my-3">📅 Gündəlik Hesabat</h2>
+      <table class="table table-striped">
+        <tr>
+          <th scope="col">Sıra</th>
+          <th scope="col">Ad</th>
+          <th scope="col">Sual sayı</th>
+          <th scope="col">Düz</th>
+          <th scope="col">Səhv</th>
+          <th scope="col">Faiz</th>
+        </tr>
+        {% for row in daily %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ row.user_name }}</td>
+          <td>{{ row.sual_sayi }}</td>
+          <td>{{ row.duz }}</td>
+          <td>{{ row.sehv }}</td>
+          <td>{{ row.faiz }}%</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    <!-- Həftəlik Hesabat -->
+    <div class="container img-thumbnail mt-4">
+      <h2 id="hefte" style="scroll-margin-top: 110px" class="my-3">📅 Həftəlik Hesabat</h2>
+      <table class="table table-striped">
+        <tr>
+          <th scope="col">Sıra</th>
+          <th scope="col">Ad</th>
+          <th scope="col">Sual sayı</th>
+          <th scope="col">Düz</th>
+          <th scope="col">Səhv</th>
+          <th scope="col">Faiz</th>
+        </tr>
+        {% for row in weekly %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ row.user_name }}</td>
+          <td>{{ row.sual_sayi }}</td>
+          <td>{{ row.duz }}</td>
+          <td>{{ row.sehv }}</td>
+          <td>{{ row.faiz }}%</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    <!-- Ümumi Hesabat -->
+    <div class="container img-thumbnail mt-4">
+      <h2 id="umumi" style="scroll-margin-top: 110px" class="my-3">🌍 Ümumi Hesabat</h2>
+      <table class="table table-striped">
+        <tr>
+          <th scope="col">Sıra</th>
+          <th scope="col">Ad</th>
+          <th scope="col">Sual sayı</th>
+          <th scope="col">Düz</th>
+          <th scope="col">Səhv</th>
+          <th scope="col">Faiz</th>
+        </tr>
+        {% for row in overall %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ row.user_name }}</td>
+          <td>{{ row.sual_sayi }}</td>
+          <td>{{ row.duz }}</td>
+          <td>{{ row.sehv }}</td>
+          <td>{{ row.faiz }}%</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    <!-- Dərs Cədvəli -->
+    <div class="container my-3 img-thumbnail">
+      <h3 class="my-3 mb">Dərs cədvəli: (Elmaddin Əhmədzadə)</h3>
+      <div class="accordion mb-3" id="accordionExample">
         <div class="accordion-item">
           <h2 class="accordion-header">
             <button
@@ -279,82 +355,7 @@
       </div>
     </div>
 
-    <!-- Gündəlik Hesabat -->
-    <div class="container img-thumbnail mt-4">
-      <h2 id="daily" style="scroll-margin-top: 110px" class="my-3">📅 Gündəlik Hesabat</h2>
-      <table class="table table-striped">
-        <tr>
-          <th scope="col">Sıra</th>
-          <th scope="col">Ad</th>
-          <th scope="col">Sual sayı</th>
-          <th scope="col">Düz</th>
-          <th scope="col">Səhv</th>
-          <th scope="col">Faiz</th>
-        </tr>
-        {% for row in daily %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ row.user_name }}</td>
-          <td>{{ row.sual_sayi }}</td>
-          <td>{{ row.duz }}</td>
-          <td>{{ row.sehv }}</td>
-          <td>{{ row.faiz }}%</td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
-
-    <!-- Həftəlik Hesabat -->
-    <div class="container img-thumbnail mt-4">
-      <h2 id="hefte" style="scroll-margin-top: 110px" class="my-3">📅 Həftəlik Hesabat</h2>
-      <table class="table table-striped">
-        <tr>
-          <th scope="col">Sıra</th>
-          <th scope="col">Ad</th>
-          <th scope="col">Sual sayı</th>
-          <th scope="col">Düz</th>
-          <th scope="col">Səhv</th>
-          <th scope="col">Faiz</th>
-        </tr>
-        {% for row in weekly %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ row.user_name }}</td>
-          <td>{{ row.sual_sayi }}</td>
-          <td>{{ row.duz }}</td>
-          <td>{{ row.sehv }}</td>
-          <td>{{ row.faiz }}%</td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
-
-    <!-- Ümumi Hesabat -->
-    <div class="container img-thumbnail mt-4">
-      <h2 id="umumi" style="scroll-margin-top: 110px" class="my-3">🌍 Ümumi Hesabat</h2>
-      <table class="table table-striped">
-        <tr>
-          <th scope="col">Sıra</th>
-          <th scope="col">Ad</th>
-          <th scope="col">Sual sayı</th>
-          <th scope="col">Düz</th>
-          <th scope="col">Səhv</th>
-          <th scope="col">Faiz</th>
-        </tr>
-        {% for row in overall %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ row.user_name }}</td>
-          <td>{{ row.sual_sayi }}</td>
-          <td>{{ row.duz }}</td>
-          <td>{{ row.sehv }}</td>
-          <td>{{ row.faiz }}%</td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
-
-    <!-- Əlaqə və WhatsApp -->
+    <!-- Xəritə -->
     <div class="container my-5 img-thumbnail">
       <h2 id="contact" style="scroll-margin-top: 110px">ASPA GROUP education center</h2>
       <iframe
@@ -362,16 +363,18 @@
         width="100%" height="450" style="border:0" allowfullscreen="" loading="lazy"></iframe>
     </div>
 
+    <!-- Whatsapp -->
     <div class="container">
-      <a href="https://wa.me/+9945084121207" target="_blank" class="whatsapp-button">
+      <a href="https://wa.me/+994508412120" target="_blank" class="whatsapp-button">
         <img src="{{ url_for('static', filename='img/wp.png') }}" alt="WhatsApp"/>
       </a>
     </div>
 
+    <!-- Footer -->
     <div class="bg-dark text-light d-flex justify-content-center">
-      <p style="line-height: 4; text-align: center;">
+      <div style="line-height: 4; text-align: center;">
         All rights reserved &copy; 2025 Site by Elmaddin Ahmadzada
-      </p>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
