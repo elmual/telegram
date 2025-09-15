@@ -2,7 +2,7 @@ import os
 from flask import Flask, render_template
 from pymongo import MongoClient
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 app = Flask(__name__)
 
@@ -53,11 +53,28 @@ def _generate_report(df, students):
 
     return report
 
+def get_daily_report():
+    today = datetime.now().date()
+    start_time = datetime.combine(today, time(hour=0, minute=0, second=0))
+    end_time = datetime.combine(today + timedelta(days=1), time(hour=0, minute=0, second=0))
+
+    # hər iki bazadan bu günün cavabları
+    answers_10_today = list(answers10.find({"timestamp": {"$gte": start_time, "$lt": end_time}}))
+    answers_11_today = list(answers11.find({"timestamp": {"$gte": start_time, "$lt": end_time}}))
+    all_answers = answers_10_today + answers_11_today
+
+    # bütün tələbələr
+    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
+
+    df = pd.DataFrame(all_answers)
+    if df.empty:
+        return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
+
+    return _generate_report(df, students)
 
 def get_weekly_report():
     one_week_ago = datetime.now() - timedelta(days=7)
     
-    # hər iki bazadan weekly data
     answers_10 = list(answers10.find({"timestamp": {"$gte": one_week_ago}}))
     answers_11 = list(answers11.find({"timestamp": {"$gte": one_week_ago}}))
     all_answers = answers_10 + answers_11
@@ -66,15 +83,11 @@ def get_weekly_report():
         return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
 
     df = pd.DataFrame(all_answers)
-
-    # students dictionary
     students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
 
     return _generate_report(df, students)
 
-
 def get_overall_report():
-    # hər iki bazadan bütün data
     answers_10 = list(answers10.find())
     answers_11 = list(answers11.find())
     all_answers = answers_10 + answers_11
@@ -91,15 +104,17 @@ def get_overall_report():
 
 @app.route("/")
 def index():
+    daily = get_daily_report()
     weekly = get_weekly_report()
     overall = get_overall_report()
 
     return render_template(
         "index.html",
+        daily=daily.to_dict(orient="records"),
         weekly=weekly.to_dict(orient="records"),
         overall=overall.to_dict(orient="records")
     )
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Render PORT-u istifadə edir, default 5000
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
