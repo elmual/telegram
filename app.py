@@ -2,7 +2,7 @@ import os
 from flask import Flask, render_template
 from pymongo import MongoClient
 import pandas as pd
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, timezone
 
 app = Flask(__name__)
 
@@ -14,13 +14,31 @@ client = MongoClient(MONGO_URI)
 db10 = client["telegram_bot_10"]
 answers10 = db10["answers"]
 students10 = db10["students"]
+pending10 = db10.get_collection("pending_answers")  # Pending cavablar
 
 # telegram_bot_11
 db11 = client["telegram_bot_11"]
 answers11 = db11["answers"]
 students11 = db11["students"]
+pending11 = db11.get_collection("pending_answers")  # Pending cavablar
 
 # ------------------ KÖMƏKÇİ FUNKSİYALAR ------------------
+
+def _prepare_answers():
+    """Bütün cavabları (answers + pending) yığ və timestamp UTC-aware et"""
+    all_answers = []
+
+    for ans in list(answers10.find()) + list(pending10.find()):
+        if ans.get("timestamp") and ans["timestamp"].tzinfo is None:
+            ans["timestamp"] = ans["timestamp"].replace(tzinfo=timezone.utc)
+        all_answers.append(ans)
+
+    for ans in list(answers11.find()) + list(pending11.find()):
+        if ans.get("timestamp") and ans["timestamp"].tzinfo is None:
+            ans["timestamp"] = ans["timestamp"].replace(tzinfo=timezone.utc)
+        all_answers.append(ans)
+
+    return all_answers
 
 def _generate_report(df, students):
     """DataFrame və students dictionary-dən hesabat hazırla."""
@@ -51,54 +69,43 @@ def _generate_report(df, students):
     # faiz sırasına görə, sonra sual sayına görə düzənlə
     report = report.sort_values(by=["faiz", "sual_sayi"], ascending=[False, False])
 
-
     return report
 
 def get_daily_report():
-    today = datetime.now().date()
-    start_time = datetime.combine(today, time(hour=0, minute=0, second=0))
-    end_time = datetime.combine(today + timedelta(days=1), time(hour=0, minute=0, second=0))
+    today = datetime.now(timezone.utc).date()
+    start_time = datetime.combine(today, time(hour=0, minute=0, second=0), tzinfo=timezone.utc)
+    end_time = start_time + timedelta(days=1)
 
-    # hər iki bazadan bu günün cavabları
-    answers_10_today = list(answers10.find({"timestamp": {"$gte": start_time, "$lt": end_time}}))
-    answers_11_today = list(answers11.find({"timestamp": {"$gte": start_time, "$lt": end_time}}))
-    all_answers = answers_10_today + answers_11_today
+    all_answers = [a for a in _prepare_answers() if start_time <= a["timestamp"] < end_time]
 
-    # bütün tələbələr
     students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
 
-    df = pd.DataFrame(all_answers)
-    if df.empty:
+    if not all_answers:
         return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
 
+    df = pd.DataFrame(all_answers)
     return _generate_report(df, students)
 
 def get_weekly_report():
-    one_week_ago = datetime.now() - timedelta(days=7)
-    
-    answers_10 = list(answers10.find({"timestamp": {"$gte": one_week_ago}}))
-    answers_11 = list(answers11.find({"timestamp": {"$gte": one_week_ago}}))
-    all_answers = answers_10 + answers_11
+    one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    all_answers = [a for a in _prepare_answers() if a["timestamp"] >= one_week_ago]
+
+    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
 
     if not all_answers:
         return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
 
     df = pd.DataFrame(all_answers)
-    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
-
     return _generate_report(df, students)
 
 def get_overall_report():
-    answers_10 = list(answers10.find())
-    answers_11 = list(answers11.find())
-    all_answers = answers_10 + answers_11
+    all_answers = _prepare_answers()
+    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
 
     if not all_answers:
         return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
 
     df = pd.DataFrame(all_answers)
-    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
-
     return _generate_report(df, students)
 
 # ------------------ FLASK ROUTE ------------------
