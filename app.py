@@ -48,7 +48,6 @@ def _generate_report(df, students):
     hidden_ids = [uid for uid, st in students.items() if st.get("hidden")]
     report = report[~report["user_id"].isin(hidden_ids)]
 
-    # faiz sırasına görə düzənlə
     # faiz sırasına görə, sonra sual sayına görə düzənlə
     report = report.sort_values(by=["faiz", "sual_sayi"], ascending=[False, False])
 
