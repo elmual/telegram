@@ -33,6 +33,13 @@ def _prepare_answers():
 
     return all_answers
 
+def _prepare_students():
+    """Bütün tələbələri dictionary formatında yığ və full_name-ı mütləq saxla"""
+    students = {}
+    for s in list(students10.find()) + list(students11.find()):
+        students[s["user_id"]] = s
+    return students
+
 def _generate_report(df, students, daily_limits=None):
     """DataFrame və students dictionary-dən hesabat hazırla"""
     if df.empty:
@@ -41,18 +48,22 @@ def _generate_report(df, students, daily_limits=None):
         df["correct"] = df["selected_option"] == df["correct_option"]
         report = df.groupby("user_id").agg(
             sual_sayi=("user_id", "count"),
-            duz=("correct", "sum"),
-            user_name=("user_name", "first")
+            duz=("correct", "sum")
         ).reset_index()
-        report["sehv"] = report["sual_sayi"] - report["duz"]
-        report["faiz"] = (report["duz"] / report["sual_sayi"] * 100).round(0).astype(int)
+
+    # full_name hər zaman göstərilsin
+    report["user_name"] = report["user_id"].apply(lambda uid: students[uid]["full_name"])
+
+    # sehv və faiz hesabla
+    report["sehv"] = report["sual_sayi"] - report["duz"]
+    report["faiz"] = ((report["duz"] / report["sual_sayi"]) * 100).round(0).fillna(0).astype(int)
 
     # bütün tələbələri əlavə et (heç cavab verməyənləri də)
     for uid, student in students.items():
         if uid not in report["user_id"].values:
             report = pd.concat([report, pd.DataFrame([{
                 "user_id": uid,
-                "user_name": student.get("full_name") or student.get("name") or "Naməlum",
+                "user_name": student.get("full_name"),
                 "sual_sayi": 0,
                 "duz": 0,
                 "sehv": 0,
@@ -70,19 +81,10 @@ def _generate_report(df, students, daily_limits=None):
     hidden_ids = [uid for uid, st in students.items() if st.get("hidden")]
     report = report[~report["user_id"].isin(hidden_ids)]
 
-    # faiz sırasına görə, sonra sual sayına görə düzənlə
+    # faiz və sual sayına görə sırala
     report = report.sort_values(by=["faiz", "sual_sayi"], ascending=[False, False])
 
     return report
-
-def _prepare_students():
-    """Bütün tələbələri dictionary formatında yığ və full_name boşdursa name ilə doldur"""
-    students = {}
-    for s in list(students10.find()) + list(students11.find()):
-        if "full_name" not in s or not s["full_name"]:
-            s["full_name"] = s.get("name", "Naməlum")
-        students[s["user_id"]] = s
-    return students
 
 def get_daily_report():
     today = datetime.now(timezone.utc).date()
@@ -106,15 +108,12 @@ def get_weekly_report():
     one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     all_answers = [a for a in _prepare_answers() if a["timestamp"] >= one_week_ago]
     students = _prepare_students()
-
-    # Limitləri günə görə hesablamaq çətindir, ona görə yalnız cavab sayını göstər
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students)
 
 def get_overall_report():
     all_answers = _prepare_answers()
     students = _prepare_students()
-
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students)
 
