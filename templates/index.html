@@ -153,27 +153,16 @@
 
     <!-- Gündəlik Hesabat -->
     <div class="container img-thumbnail mt-3">
-      <h2 id="daily" style="scroll-margin-top: 110px" class="my-3">📅 Gündəlik Hesabat</h2>
-      <table class="table table-striped">
-        <tr>
-          <th scope="col">Sıra</th>
-          <th scope="col">Ad</th>
-          <th scope="col">Sual sayı</th>
-          <th scope="col">Düz</th>
-          <th scope="col">Səhv</th>
-          <th scope="col">Faiz</th>
-        </tr>
-        {% for row in daily %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ row.user_name }}</td>
-          <td>{{ row.sual_sayi }}</td>
-          <td>{{ row.duz }}</td>
-          <td>{{ row.sehv }}</td>
-          <td>{{ row.faiz }}%</td>
-        </tr>
+      <h2 id="daily" style="scroll-margin-top: 110px" class="my-3">📊 Bu gün suallara cavab verməyənlər:</h2>
+      {% if pending_counts %}
+      <ul>
+        {% for p in pending_counts %}
+          <li>{{ p.user_name }} - {{ p.missing_count }} sual</li>
         {% endfor %}
-      </table>
+      </ul>
+      {% else %}
+        <p>Bütün tələbələr cavab verib ✅</p>
+      {% endif %}
     </div>
 
     <!-- Həftəlik Hesabat -->
