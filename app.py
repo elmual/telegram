@@ -75,13 +75,22 @@ def _generate_report(df, students, daily_limits=None):
 
     return report
 
+def _prepare_students():
+    """Bütün tələbələri dictionary formatında yığ və full_name boşdursa name ilə doldur"""
+    students = {}
+    for s in list(students10.find()) + list(students11.find()):
+        if "full_name" not in s or not s["full_name"]:
+            s["full_name"] = s.get("name", "Naməlum")
+        students[s["user_id"]] = s
+    return students
+
 def get_daily_report():
     today = datetime.now(timezone.utc).date()
     start_time = datetime.combine(today, time.min, tzinfo=timezone.utc)
     end_time = start_time + timedelta(days=1)
 
     all_answers = [a for a in _prepare_answers() if start_time <= a["timestamp"] < end_time]
-    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
+    students = _prepare_students()
 
     # hər tələbə üçün bot limitləri
     daily_limits = {}
@@ -96,14 +105,15 @@ def get_daily_report():
 def get_weekly_report():
     one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     all_answers = [a for a in _prepare_answers() if a["timestamp"] >= one_week_ago]
-    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
+    students = _prepare_students()
 
+    # Limitləri günə görə hesablamaq çətindir, ona görə yalnız cavab sayını göstər
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students)
 
 def get_overall_report():
     all_answers = _prepare_answers()
-    students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
+    students = _prepare_students()
 
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students)

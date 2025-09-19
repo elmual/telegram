@@ -232,6 +232,7 @@
           <th scope="col">Sual sayı</th>
           <th scope="col">Düz</th>
           <th scope="col">Səhv</th>
+          <th scope="col">Cavabsız</th>
           <th scope="col">Faiz</th>
         </tr>
         {% for row in weekly %}
@@ -241,6 +242,7 @@
           <td>{{ row.sual_sayi }}</td>
           <td>{{ row.duz }}</td>
           <td>{{ row.sehv }}</td>
+          <td>{{ row.cavabsiz }}</td>
           <td>{{ row.faiz }}%</td>
         </tr>
         {% endfor %}
@@ -259,6 +261,7 @@
           <th scope="col">Sual sayı</th>
           <th scope="col">Düz</th>
           <th scope="col">Səhv</th>
+          <th scope="col">Cavabsız</th>
           <th scope="col">Faiz</th>
         </tr>
         {% for row in overall %}
@@ -268,6 +271,7 @@
           <td>{{ row.sual_sayi }}</td>
           <td>{{ row.duz }}</td>
           <td>{{ row.sehv }}</td>
+          <td>{{ row.cavabsiz }}</td>
           <td>{{ row.faiz }}%</td>
         </tr>
         {% endfor %}
