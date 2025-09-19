@@ -20,7 +20,7 @@ db11 = client["telegram_bot_11"]
 answers11 = db11["answers"]
 students11 = db11["students"]
 
-# ------------------ KÖMƏKÇİ FUNKSİYALAR ------------------
+# --- KÖMƏKÇİ FUNKSİYALAR ---
 
 def _prepare_answers():
     """Bütün cavabları yığ və timestamp UTC-aware et"""
@@ -33,29 +33,47 @@ def _prepare_answers():
 
     return all_answers
 
-def _generate_report(df, students):
-    """DataFrame və students dictionary-dən hesabat hazırla."""
+def _generate_report(df, students, daily_limits=None):
+    """DataFrame və students dictionary-dən hesabat hazırla"""
     if df.empty:
-        return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
+        report = pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz", "cavabsiz"])
+    else:
+        df["correct"] = df["selected_option"] == df["correct_option"]
+        report = df.groupby("user_id").agg(
+            sual_sayi=("user_id", "count"),
+            duz=("correct", "sum"),
+            user_name=("user_name", "first")
+        ).reset_index()
+        report["sehv"] = report["sual_sayi"] - report["duz"]
+        report["faiz"] = (report["duz"] / report["sual_sayi"] * 100).round(0).astype(int)
 
-    df["correct"] = df["selected_option"] == df["correct_option"]
+    # bütün tələbələri əlavə et (heç cavab verməyənləri də)
+    for uid, student in students.items():
+        if uid not in report["user_id"].values:
+            report = pd.concat([report, pd.DataFrame([{
+                "user_id": uid,
+                "user_name": student.get("full_name") or student.get("name") or "Naməlum",
+                "sual_sayi": 0,
+                "duz": 0,
+                "sehv": 0,
+                "faiz": 0
+            }])], ignore_index=True)
 
-    report = df.groupby("user_id").agg(
-        sual_sayi=("user_id", "count"),
-        duz=("correct", "sum"),
-        user_name=("user_name", "first")
-    ).reset_index()
+    # Cavabsız suallar
+    if daily_limits:
+        report["cavabsiz"] = report.apply(lambda row: daily_limits.get(row["user_id"], 0) - row["sual_sayi"], axis=1)
+        report["cavabsiz"] = report["cavabsiz"].clip(lower=0)
+    else:
+        report["cavabsiz"] = 0
 
-    report["sehv"] = report["sual_sayi"] - report["duz"]
-    report["faiz"] = (report["duz"] / report["sual_sayi"] * 100).round(0).astype(int)
+    # hidden olanları çıxart
+    hidden_ids = [uid for uid, st in students.items() if st.get("hidden")]
+    report = report[~report["user_id"].isin(hidden_ids)]
 
-    # full_name varsa, göstər
-    report["user_name"] = report.apply(
-        lambda row: students.get(row["user_id"], {}).get("full_name") or row["user_name"],
-        axis=1
-    )
+    # faiz sırasına görə, sonra sual sayına görə düzənlə
+    report = report.sort_values(by=["faiz", "sual_sayi"], ascending=[False, False])
 
-    return report.sort_values(by=["faiz", "sual_sayi"], ascending=[False, False])
+    return report
 
 def get_daily_report():
     today = datetime.now(timezone.utc).date()
@@ -65,19 +83,20 @@ def get_daily_report():
     all_answers = [a for a in _prepare_answers() if start_time <= a["timestamp"] < end_time]
     students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
 
-    if not all_answers:
-        return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
+    # hər tələbə üçün bot limitləri
+    daily_limits = {}
+    for s in list(students10.find()):
+        daily_limits[s["user_id"]] = 10
+    for s in list(students11.find()):
+        daily_limits[s["user_id"]] = 12
 
     df = pd.DataFrame(all_answers)
-    return _generate_report(df, students)
+    return _generate_report(df, students, daily_limits=daily_limits)
 
 def get_weekly_report():
     one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     all_answers = [a for a in _prepare_answers() if a["timestamp"] >= one_week_ago]
     students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
-
-    if not all_answers:
-        return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
 
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students)
@@ -86,66 +105,21 @@ def get_overall_report():
     all_answers = _prepare_answers()
     students = {s["user_id"]: s for s in list(students10.find()) + list(students11.find())}
 
-    if not all_answers:
-        return pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz"])
-
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students)
 
-def get_pending_counts_report():
-    """Gündəlik cavab verməyənlərin siyahısı (Ad - X sual)"""
-    today = datetime.now(timezone.utc).date()
-    start_time = datetime.combine(today, time.min, tzinfo=timezone.utc)
-    end_time = start_time + timedelta(days=1)
-
-    report = []
-
-    # --- Bot10 ---
-    students10_list = list(students10.find({"hidden": {"$ne": True}}))
-    answers10_today = list(answers10.find({"timestamp": {"$gte": start_time, "$lt": end_time}}))
-
-    for student in students10_list:
-        user_id = student["user_id"]
-        answered_count = sum(1 for a in answers10_today if a["user_id"] == user_id)
-        missing_count = 10 - answered_count  # bot10 = 10 sual
-        if missing_count > 0:
-            report.append({
-                "user_name": student.get("full_name") or student.get("name") or "Naməlum",
-                "missing_count": missing_count
-            })
-
-    # --- Bot11 ---
-    students11_list = list(students11.find({"hidden": {"$ne": True}}))
-    answers11_today = list(answers11.find({"timestamp": {"$gte": start_time, "$lt": end_time}}))
-
-    for student in students11_list:
-        user_id = student["user_id"]
-        answered_count = sum(1 for a in answers11_today if a["user_id"] == user_id)
-        missing_count = 12 - answered_count  # bot11 = 12 sual
-        if missing_count > 0:
-            report.append({
-                "user_name": student.get("full_name") or student.get("name") or "Naməlum",
-                "missing_count": missing_count
-            })
-
-    return report
-
-
-# ------------------ FLASK ROUTE ------------------
-
+# --- FLASK ROUTE ---
 @app.route("/")
 def index():
     daily = get_daily_report()
     weekly = get_weekly_report()
     overall = get_overall_report()
-    pending_counts = get_pending_counts_report()
 
     return render_template(
         "index.html",
         daily=daily.to_dict(orient="records"),
         weekly=weekly.to_dict(orient="records"),
-        overall=overall.to_dict(orient="records"),
-        pending_counts=pending_counts
+        overall=overall.to_dict(orient="records")
     )
 
 if __name__ == "__main__":
