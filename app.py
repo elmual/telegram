@@ -100,31 +100,36 @@ def get_pending_counts_report():
 
     report = []
 
-    # Bot10
+    # --- Bot10 ---
+    students10_list = list(students10.find({"hidden": {"$ne": True}}))
     answers10_today = list(answers10.find({"timestamp": {"$gte": start_time, "$lt": end_time}}))
-    students10_dict = {s["user_id"]: s for s in students10.find()}
-    for user_id, student in students10_dict.items():
+
+    for student in students10_list:
+        user_id = student["user_id"]
         answered_count = sum(1 for a in answers10_today if a["user_id"] == user_id)
-        missing_count = 10 - answered_count
+        missing_count = 10 - answered_count  # bot10 = 10 sual
         if missing_count > 0:
             report.append({
-                "user_name": student.get("full_name") or student.get("user_name"),
+                "user_name": student.get("full_name") or student.get("name") or "Naməlum",
                 "missing_count": missing_count
             })
 
-    # Bot11
+    # --- Bot11 ---
+    students11_list = list(students11.find({"hidden": {"$ne": True}}))
     answers11_today = list(answers11.find({"timestamp": {"$gte": start_time, "$lt": end_time}}))
-    students11_dict = {s["user_id"]: s for s in students11.find()}
-    for user_id, student in students11_dict.items():
+
+    for student in students11_list:
+        user_id = student["user_id"]
         answered_count = sum(1 for a in answers11_today if a["user_id"] == user_id)
-        missing_count = 12 - answered_count
+        missing_count = 12 - answered_count  # bot11 = 12 sual
         if missing_count > 0:
             report.append({
-                "user_name": student.get("full_name") or student.get("user_name"),
+                "user_name": student.get("full_name") or student.get("name") or "Naməlum",
                 "missing_count": missing_count
             })
 
     return report
+
 
 # ------------------ FLASK ROUTE ------------------
 
