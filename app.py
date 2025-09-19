@@ -21,29 +21,28 @@ answers11 = db11["answers"]
 students11 = db11["students"]
 
 # --- KÖMƏKÇİ FUNKSİYALAR ---
-
 def _prepare_answers():
-    """Bütün cavabları yığ və timestamp UTC-aware et"""
     all_answers = []
-
     for ans in list(answers10.find()) + list(answers11.find()):
         if ans.get("timestamp") and ans["timestamp"].tzinfo is None:
             ans["timestamp"] = ans["timestamp"].replace(tzinfo=timezone.utc)
         all_answers.append(ans)
-
     return all_answers
 
 def _prepare_students():
-    """Bütün tələbələri dictionary formatında yığ və full_name-ı mütləq saxla"""
     students = {}
     for s in list(students10.find()) + list(students11.find()):
         students[s["user_id"]] = s
     return students
 
-def _generate_report(df, students, daily_limits=None):
-    """DataFrame və students dictionary-dən hesabat hazırla"""
+def is_weekday(ts):
+    """Yalnız iş günləri (Mon-Fri)"""
+    return ts.weekday() < 5
+
+def _generate_report(df, students, limits=None):
+    """Report generator"""
     if df.empty:
-        report = pd.DataFrame(columns=["user_id", "user_name", "sual_sayi", "duz", "sehv", "faiz", "cavabsiz"])
+        report = pd.DataFrame(columns=["user_id","user_name","sual_sayi","duz","sehv","faiz","cavabsiz"])
     else:
         df["correct"] = df["selected_option"] == df["correct_option"]
         report = df.groupby("user_id").agg(
@@ -51,71 +50,96 @@ def _generate_report(df, students, daily_limits=None):
             duz=("correct", "sum")
         ).reset_index()
 
-    # full_name hər zaman göstərilsin
     report["user_name"] = report["user_id"].apply(lambda uid: students[uid]["full_name"])
-
-    # sehv və faiz hesabla
     report["sehv"] = report["sual_sayi"] - report["duz"]
-    report["faiz"] = ((report["duz"] / report["sual_sayi"]) * 100).round(0).fillna(0).astype(int)
+    report["faiz"] = ((report["duz"]/report["sual_sayi"])*100).round(0).fillna(0).astype(int)
 
-    # bütün tələbələri əlavə et (heç cavab verməyənləri də)
-    for uid, student in students.items():
-        if uid not in report["user_id"].values:
-            report = pd.concat([report, pd.DataFrame([{
-                "user_id": uid,
-                "user_name": student.get("full_name"),
-                "sual_sayi": 0,
-                "duz": 0,
-                "sehv": 0,
-                "faiz": 0
-            }])], ignore_index=True)
-
-    # Cavabsız suallar
-    if daily_limits:
-        report["cavabsiz"] = report.apply(lambda row: daily_limits.get(row["user_id"], 0) - row["sual_sayi"], axis=1)
-        report["cavabsiz"] = report["cavabsiz"].clip(lower=0)
+    if limits:
+        report["cavabsiz"] = report.apply(lambda row: max(0, limits.get(row["user_id"], 0) - row["sual_sayi"]), axis=1)
+        report["sual_sayi"] = report["sual_sayi"] + report["cavabsiz"]
     else:
         report["cavabsiz"] = 0
 
-    # hidden olanları çıxart
+    # heç cavab verməyən tələbələr
+    for uid, student in students.items():
+        if uid not in report["user_id"].values:
+            sual_count = limits.get(uid, 0) if limits else 0
+            report = pd.concat([report, pd.DataFrame([{
+                "user_id": uid,
+                "user_name": student.get("full_name"),
+                "sual_sayi": sual_count,
+                "duz": 0,
+                "sehv": 0,
+                "faiz": 0,
+                "cavabsiz": sual_count
+            }])], ignore_index=True)
+
     hidden_ids = [uid for uid, st in students.items() if st.get("hidden")]
     report = report[~report["user_id"].isin(hidden_ids)]
-
-    # faiz və sual sayına görə sırala
-    report = report.sort_values(by=["faiz", "sual_sayi"], ascending=[False, False])
-
+    report = report.sort_values(by=["faiz","sual_sayi"], ascending=[False,False])
     return report
 
-def get_daily_report():
-    today = datetime.now(timezone.utc).date()
-    start_time = datetime.combine(today, time.min, tzinfo=timezone.utc)
-    end_time = start_time + timedelta(days=1)
+# --- LIMITS ---
+def get_daily_limits():
+    limits = {}
+    for s in list(students10.find()):
+        limits[s["user_id"]] = 10
+    for s in list(students11.find()):
+        limits[s["user_id"]] = 12
+    return limits
 
-    all_answers = [a for a in _prepare_answers() if start_time <= a["timestamp"] < end_time]
+def get_weekly_limits():
+    limits = {}
+    for s in list(students10.find()):
+        limits[s["user_id"]] = 10 * 5  # iş günləri
+    for s in list(students11.find()):
+        limits[s["user_id"]] = 12 * 5
+    return limits
+
+def get_overall_limits(all_answers):
+    """Ümumi limit: polls-da maksimum question_idx + 1"""
+    limits = {}
     students = _prepare_students()
 
-    # hər tələbə üçün bot limitləri
-    daily_limits = {}
-    for s in list(students10.find()):
-        daily_limits[s["user_id"]] = 10
-    for s in list(students11.find()):
-        daily_limits[s["user_id"]] = 12
+    # Bot10
+    bot10_polls = db10["polls"].find()
+    max_idx_10 = max([p["question_idx"] for p in bot10_polls], default=-1)
+    for s in students10.find():
+        limits[s["user_id"]] = max_idx_10 + 1
 
+    # Bot11
+    bot11_polls = db11["polls"].find()
+    max_idx_11 = max([p["question_idx"] for p in bot11_polls], default=-1)
+    for s in students11.find():
+        limits[s["user_id"]] = max_idx_11 + 1
+
+    return limits
+
+# --- REPORTS ---
+def get_daily_report():
+    today = datetime.now(timezone.utc).date()
+    start = datetime.combine(today, time.min, tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+    all_answers = [a for a in _prepare_answers() if start <= a["timestamp"] < end]
+    students = _prepare_students()
+    limits = get_daily_limits()
     df = pd.DataFrame(all_answers)
-    return _generate_report(df, students, daily_limits=daily_limits)
+    return _generate_report(df, students, limits=limits)
 
 def get_weekly_report():
     one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    all_answers = [a for a in _prepare_answers() if a["timestamp"] >= one_week_ago]
+    all_answers = [a for a in _prepare_answers() if a["timestamp"] >= one_week_ago and is_weekday(a["timestamp"])]
     students = _prepare_students()
+    limits = get_weekly_limits()
     df = pd.DataFrame(all_answers)
-    return _generate_report(df, students)
+    return _generate_report(df, students, limits=limits)
 
 def get_overall_report():
     all_answers = _prepare_answers()
     students = _prepare_students()
+    limits = get_overall_limits(all_answers)
     df = pd.DataFrame(all_answers)
-    return _generate_report(df, students)
+    return _generate_report(df, students, limits=limits)
 
 # --- FLASK ROUTE ---
 @app.route("/")
@@ -123,7 +147,6 @@ def index():
     daily = get_daily_report()
     weekly = get_weekly_report()
     overall = get_overall_report()
-
     return render_template(
         "index.html",
         daily=daily.to_dict(orient="records"),
@@ -132,5 +155,5 @@ def index():
     )
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT",5000))
     app.run(host="0.0.0.0", port=port, debug=True)
