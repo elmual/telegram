@@ -127,12 +127,24 @@ def get_daily_report():
     return _generate_report(df, students, limits=limits)
 
 def get_weekly_report():
-    one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    all_answers = [a for a in _prepare_answers() if a["timestamp"] >= one_week_ago and is_weekday(a["timestamp"])]
+    today = datetime.now(timezone.utc)
+    start_of_week = today - timedelta(days=today.weekday())
+    start = datetime.combine(start_of_week.date(), time.min, tzinfo=timezone.utc)
+    end = datetime.combine((start_of_week + timedelta(days=5)).date(), time.max, tzinfo=timezone.utc)
+
+    all_answers = [
+        a for a in _prepare_answers()
+        if start <= a["timestamp"] <= end and is_weekday(a["timestamp"])
+    ]
+
     students = _prepare_students()
     limits = get_weekly_limits()
+
+    # yalnız bu həftə cavab verən tələbələr üçün limit tətbiq edirik
     df = pd.DataFrame(all_answers)
-    return _generate_report(df, students, limits=limits)
+    used_limits = {uid: limits[uid] for uid in df["user_id"].unique()} if not df.empty else None
+    return _generate_report(df, students, limits=used_limits)
+
 
 def get_overall_report():
     all_answers = _prepare_answers()

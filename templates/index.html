@@ -36,6 +36,14 @@
       .ders {
         font-size: 20px;
       }
+      .card-img-top {
+        width: 300px;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 50%;
+        display: block;
+        margin: 0 auto;
+      }
     </style>
   </head>
   <body style="padding-top: 110px">
@@ -219,6 +227,49 @@
         {% endfor %}
       </table>
     </div>
+
+    <!-- Birincilərin kartları -->
+    <!-- <div class="container img-thumbnail mt-3 pt-2">
+      <h2 id="daily" style="scroll-margin-top: 110px" class="my-3">
+        📅 Yazılı test imtahan nəticəsi
+      </h2>
+      <div class="row row-cols-1 row-cols-md-3 g-4 mb-2">
+        <div class="col">
+          <div class="card pt-4">
+            <img src="{{ url_for('static', filename='img/boy.png') }}" class="card-img-top" alt="..." />
+            <div class="card-body">
+              <h5 class="card-title">İsmayıl Qasımov</h5>
+              <p class="card-text">
+                Teleqarmda paylaşılan gündəlik test suallarının nəticəsində həftənin birincisi!
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card pt-4">
+            <img src="{{ url_for('static', filename='img/girl.png') }}" class="card-img-top" alt="..." />
+            <div class="card-body">
+              <h5 class="card-title">Aysel Abdullayeva</h5>
+              <p class="card-text">
+                Keçirilmiş mövzulara aid keçirilmiş sınaq imtahanın nəticələrinə görə bu ayın birincisi!
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card pt-4">
+            <img src="{{ url_for('static', filename='img/girl.png') }}" class="card-img-top" alt="..." />
+            <div class="card-body">
+              <h5 class="card-title">Əsmər Cəfərova</h5>
+              <p class="card-text">
+                Onlayn ev tapşırığında paylaşılan test imtahanlarının nəticəsinə görə həftənin birincisi!
+              </p>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div> -->
 
     <!-- Həftəlik Hesabat -->
     <div class="container img-thumbnail mt-4">
