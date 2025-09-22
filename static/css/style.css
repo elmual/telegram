@@ -65,9 +65,9 @@
 
 .swiper-slide img {
   width: 100%;
-  aspect-ratio: 1 / 1; /* ✅ eni və hündürlüyü bərabər */
+  aspect-ratio: 1 / 1; /* eni və hündürlüyü bərabər edir */
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 50%; /* ✅ şəkil dairəvi olur */
   margin-bottom: 10px;
 }
 
