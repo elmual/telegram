@@ -39,7 +39,7 @@
 }
 
 .card-body h6 {
-  font-size: 14px;
+  font-size: 15px;
   color: #555;
   margin: 0;
 }
@@ -73,14 +73,14 @@
 }
 
 .swiper-slide h3 {
-  font-size: 18px;
+  font-size: 24px;
   margin: 5px 0 0 0;
 }
 
 /* Mobil üçün əlavə optimallaşdırma */
 @media (max-width: 768px) {
   .swiper-slide h3 {
-    font-size: 16px;
+    font-size: 28px;
   }
   .swiper-pagination {
     display: none;
