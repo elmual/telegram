@@ -31,3 +31,8 @@ const swiper = new Swiper(".swiper", {
     1200: { slidesPerView: 3 }, // ✅ böyük ekranda 5
   },
 });
+
+AOS.init({
+    duration: 1000, // animasiyanın müddəti (ms)
+    once: true      // yalnız 1 dəfə animasiya olsun
+  });
