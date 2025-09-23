@@ -28,6 +28,6 @@ const swiper = new Swiper(".swiper", {
   breakpoints: {
     0: { slidesPerView: 1 },
     768: { slidesPerView: 3 },
-    1200: { slidesPerView: 5 }, // ✅ böyük ekranda 5
+    1200: { slidesPerView: 3 }, // ✅ böyük ekranda 5
   },
 });
