@@ -76,7 +76,7 @@ def _generate_report(df, students, limits=None):
 
     hidden_ids = [uid for uid, st in students.items() if st.get("hidden")]
     report = report[~report["user_id"].isin(hidden_ids)]
-    report = report.sort_values(by=["faiz","sual_sayi"], ascending=[False,False])
+    report = report.sort_values(by=["cavabsiz","faiz","duz"], ascending=[True,False,False]).reset_index(drop=True)
     return report
 
 # --- LIMITS ---
