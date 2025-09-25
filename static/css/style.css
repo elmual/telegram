@@ -52,25 +52,22 @@
 }
 
 .swiper-slide {
-  background: #fff;
-  border-radius: 15px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  text-align: center;
-  padding: 15px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  align-items: center; /* slide mərkəzləşsin */
-  transition: transform 0.3s ease;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  padding: 15px;
 }
-
 .swiper-slide img {
-  width: 100%;
-  aspect-ratio: 1 / 1; /* eni və hündürlüyü bərabər edir */
+  max-height: 240px;
   object-fit: cover;
-  border-radius: 50%; /* ✅ şəkil dairəvi olur */
+  border-radius: 50%;
   margin-bottom: 10px;
 }
+
 
 .swiper-slide h3 {
   font-size: 24px;

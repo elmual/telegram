@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Memory Card Oyunu</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card-bg: rgba(255,255,255,0.06);
+      --accent:#60a5fa;
+      --glass: rgba(255,255,255,0.04);
+      --success:#34d399;
+      --danger:#fb7185;
+      --glass-blur: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(1200px 400px at 10% 10%, rgba(96,165,250,0.06), transparent 10%),
+        linear-gradient(180deg, #071025 0%, #071530 100%);
+      color:#e6eef8;
+      padding:24px;
+    }
+
+    .wrap{
+      width:100%;
+      max-width:980px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:16px;
+      padding:20px;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+      backdrop-filter: blur(var(--glass-blur));
+    }
+
+    header{
+      display:flex;
+      gap:16px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:14px;
+    }
+    .title{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{
+      width:56px;height:56px;border-radius:10px;
+      background:linear-gradient(135deg,var(--accent),#7c3aed);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:20px;color:#052033;box-shadow:0 6px 16px rgba(96,165,250,0.12);
+    }
+    h1{margin:0;font-size:20px}
+    p.sub{margin:0;color: #a8c0e6; font-size:13px}
+
+    .controls{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      font-size:14px;
+    }
+    .stat{
+      background:var(--card-bg);
+      padding:8px 12px;border-radius:10px;min-width:84px;text-align:center;
+      box-shadow:inset 0 1px rgba(255,255,255,0.02);
+    }
+    .btn{
+      background:transparent;border:1px solid rgba(255,255,255,0.06);
+      padding:8px 12px;border-radius:10px;color:inherit;cursor:pointer;
+      transition:all .18s;backdrop-filter:blur(6px);
+    }
+    .btn:hover{transform:translateY(-3px);border-color:rgba(255,255,255,0.12)}
+
+    .board{
+      margin-top:18px;
+      display:grid;
+      gap:12px;
+      justify-content:center;
+    }
+    /* responsive grid: 4x4 on wide, 3x4 on narrow */
+    @media (min-width:720px){
+      .board{grid-template-columns: repeat(4, minmax(80px, 1fr));}
+    }
+    @media (max-width:719px){
+      .board{grid-template-columns: repeat(3, minmax(80px, 1fr));}
+    }
+
+    .card{
+      perspective:1000px;
+      width:100%; aspect-ratio: 3/4;
+    }
+    .card-inner{
+      position:relative;width:100%;height:100%;
+      transform-style:preserve-3d;transition: transform .52s cubic-bezier(.2,.9,.3,1);
+      border-radius:10px; cursor:pointer;
+    }
+    .card.flipped .card-inner{ transform: rotateY(180deg); }
+
+    .face{
+      position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;
+      backface-visibility:hidden;-webkit-backface-visibility:hidden;
+      box-shadow: 0 8px 18px rgba(2,6,23,0.5);
+      font-size:32px;
+    }
+    .front{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.03);
+      transform: rotateY(180deg);
+    }
+    .back{
+      background: linear-gradient(135deg, rgba(255,255,255,0.015), rgba(0,0,0,0.06));
+      border:1px solid rgba(255,255,255,0.02);
+      font-size:26px;color:var(--accent);
+      display:flex;flex-direction:column;gap:6px;
+    }
+
+    .back .pattern{
+      width:64%; height:60%; border-radius:8px;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg, rgba(96,165,250,0.08), rgba(124,58,237,0.06));
+      transform: translateY(-4px);
+    }
+
+    .overlay{
+      margin-top:14px; display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .message{font-size:15px;color:#bfe0ff}
+    .small{font-size:13px;color:#9fbfe0}
+
+    .win{
+      margin-top:14px;padding:12px;border-radius:10px;background:linear-gradient(90deg, rgba(52,211,153,0.06), rgba(96,165,250,0.03));
+      color: #dffbf0;border:1px solid rgba(52,211,153,0.08);
+      display:flex;align-items:center;gap:10px;justify-content:space-between;
+    }
+
+    footer.note{margin-top:12px;color:#9fbfe0;font-size:13px;text-align:center}
+
+    /* simple animation when matched */
+    .card.matched .card-inner{box-shadow:0 12px 28px rgba(52,211,153,0.08); transform:scale(1.02) rotateY(180deg)}
+  </style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="Memory Card Oyunu">
+    <header>
+      <div class="title">
+        <div class="logo">M</div>
+        <div>
+          <h1>Memory Card — Cütü Tap</h1>
+          <p class="sub">Kartları aç və eyni emoji olanları birləşdir.</p>
+        </div>
+      </div>
+
+      <div class="controls" aria-hidden="false">
+        <div class="stat"><strong id="moves">0</strong><div class="small">Hərəkət</div></div>
+        <div class="stat"><strong id="time">00:00</strong><div class="small">Zaman</div></div>
+        <button id="restart" class="btn" title="Yenidən başlat">Yenilə ↺</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="board" class="board" aria-live="polite"></div>
+
+      <div class="overlay">
+        <div class="message">Tapılan cütlər: <span id="found">0</span>/<span id="total">8</span></div>
+        <div>
+          <button id="hint" class="btn" title="Bir cüt açıq göstər">İpucu ✨</button>
+        </div>
+      </div>
+
+      <div id="notify" class="win" style="display:none">
+        <div>
+          🎉 <strong id="finalTime">00:00</strong> — <span id="finalMoves">0</span> hərəkət ilə qazandınız!
+        </div>
+        <div>
+          <button id="playAgain" class="btn">Yenidən</button>
+        </div>
+      </div>
+
+      <footer class="note">Mobil üçün əlverişli. VSCode-da yapışdırıb işlət.</footer>
+    </main>
+  </div>
+
+<script>
+(() => {
+  const boardEl = document.getElementById('board');
+  const movesEl = document.getElementById('moves');
+  const timeEl = document.getElementById('time');
+  const foundEl = document.getElementById('found');
+  const totalEl = document.getElementById('total');
+  const restartBtn = document.getElementById('restart');
+  const hintBtn = document.getElementById('hint');
+  const notify = document.getElementById('notify');
+  const finalTime = document.getElementById('finalTime');
+  const finalMoves = document.getElementById('finalMoves');
+  const playAgain = document.getElementById('playAgain');
+
+  // Emojilər (istəsən dəyişə bilərsən)
+  const symbols = ['🍎','🍌','🍇','🍓','🍒','🍍','🥝','🍑'];
+  const PAIRS = symbols.length; // 8 cüt
+  totalEl.textContent = PAIRS;
+
+  let deck = [];
+  let flipped = []; // açıq olan kartlar (DOM element & index)
+  let matchedCount = 0;
+  let moves = 0;
+  let startTime = null;
+  let timerInterval = null;
+  let lock = false; // click lock while animating
+
+  function formatTime(ms){
+    if (!ms) return "00:00";
+    const s = Math.floor(ms/1000);
+    const m = Math.floor(s/60);
+    const sec = s%60;
+    return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  }
+
+  function startTimer(){
+    if (!startTime){
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        timeEl.textContent = formatTime(Date.now() - startTime);
+      }, 300);
+    }
+  }
+  function stopTimer(){
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  function shuffle(a){
+    // Fisher–Yates
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  function buildDeck(){
+    deck = [...symbols, ...symbols]; // duplicate
+    shuffle(deck);
+  }
+
+  function renderBoard(){
+    boardEl.innerHTML = '';
+    deck.forEach((sym, idx) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.index = idx;
+      card.setAttribute('role','button');
+      card.setAttribute('aria-label','Kart');
+      card.innerHTML = `
+        <div class="card-inner" aria-hidden="false">
+          <div class="face back">
+            <div class="pattern"></div>
+          </div>
+          <div class="face front">${sym}</div>
+        </div>
+      `;
+      boardEl.appendChild(card);
+
+      card.addEventListener('click', onCardClick);
+    });
+    // reset UI
+    moves = 0; matchedCount = 0; flipped = [];
+    movesEl.textContent = moves;
+    foundEl.textContent = matchedCount;
+    timeEl.textContent = '00:00';
+    startTime = null; stopTimer();
+    notify.style.display = 'none';
+  }
+
+  function onCardClick(e){
+    if (lock) return;
+    const card = e.currentTarget;
+    const idx = Number(card.dataset.index);
+
+    // ignore if already matched or already flipped
+    if (card.classList.contains('matched') || flipped.some(f=>f.idx===idx)) return;
+
+    startTimer();
+    flipCard(card, idx);
+
+    if (flipped.length === 0){
+      flipped.push({card, idx});
+    } else if (flipped.length === 1){
+      flipped.push({card, idx});
+      moves++;
+      movesEl.textContent = moves;
+      // check match
+      const [a,b] = flipped;
+      if (deck[a.idx] === deck[b.idx]){
+        // match
+        a.card.classList.add('matched');
+        b.card.classList.add('matched');
+        matchedCount++;
+        foundEl.textContent = matchedCount;
+        flipped = [];
+        // small animation delay
+        if (matchedCount === PAIRS){
+          // win
+          setTimeout(()=> showWin(), 700);
+        }
+      } else {
+        // not match -> flip back after delay
+        lock = true;
+        setTimeout(()=>{
+          unflipCard(a.card);
+          unflipCard(b.card);
+          flipped = [];
+          lock = false;
+        }, 700);
+      }
+    }
+  }
+
+  function flipCard(card, idx){
+    card.classList.add('flipped');
+  }
+  function unflipCard(card){
+    card.classList.remove('flipped');
+  }
+
+  function showWin(){
+    stopTimer();
+    finalTime.textContent = timeEl.textContent;
+    finalMoves.textContent = moves;
+    notify.style.display = 'flex';
+  }
+
+  restartBtn.addEventListener('click', () => {
+    setupGame();
+  });
+  playAgain.addEventListener('click', () => {
+    setupGame();
+  });
+
+  // hint: temporarily show one unmatched pair
+  hintBtn.addEventListener('click', () => {
+    if (lock) return;
+    const unmatched = Array.from(boardEl.querySelectorAll('.card')).filter(c => !c.classList.contains('matched') && !c.classList.contains('flipped'));
+    if (unmatched.length < 2) return;
+    // find pair by symbol
+    // build map symbol -> elements
+    const map = {};
+    unmatched.forEach(c => {
+      const idx = Number(c.dataset.index);
+      const sym = deck[idx];
+      if(!map[sym]) map[sym]=[];
+      map[sym].push(c);
+    });
+    const pair = Object.values(map).find(arr => arr.length>=2);
+    if (pair){
+      lock = true;
+      pair[0].classList.add('flipped');
+      pair[1].classList.add('flipped');
+      setTimeout(()=>{
+        pair[0].classList.remove('flipped');
+        pair[1].classList.remove('flipped');
+        lock = false;
+      }, 900);
+    } else {
+      // fallback: show two random for a short time
+      const a = unmatched[Math.floor(Math.random()*unmatched.length)];
+      let b = unmatched[Math.floor(Math.random()*unmatched.length)];
+      while(b===a) b = unmatched[Math.floor(Math.random()*unmatched.length)];
+      lock = true;
+      a.classList.add('flipped'); b.classList.add('flipped');
+      setTimeout(()=>{ a.classList.remove('flipped'); b.classList.remove('flipped'); lock=false; }, 900);
+    }
+  });
+
+  function setupGame(){
+    buildDeck();
+    renderBoard();
+  }
+
+  // initial
+  setupGame();
+
+  // accessibility: keyboard support (Enter/Space flips focused card)
+  boardEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' '){
+      const el = document.activeElement;
+      if (el && el.classList.contains('card')){
+        el.click();
+        e.preventDefault();
+      }
+    }
+  });
+
+  // make cards focusable
+  const observer = new MutationObserver(()=>{
+    boardEl.querySelectorAll('.card').forEach(c => {
+      c.tabIndex = 0;
+    });
+  });
+  observer.observe(boardEl, {childList:true});
+})();
+</script>
+</body>
+</html>
