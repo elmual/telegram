@@ -28,9 +28,6 @@
   display: block;
   margin: 0 auto;
 }
-.card-body {
-  padding: 15px;
-}
 
 .card-body h4 {
   font-size: 18px;
