@@ -99,7 +99,7 @@
   transform: rotate(180deg);
   white-space: nowrap;
   padding: 6px 4px;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   text-align: center;
   min-width: 25px;
@@ -133,5 +133,6 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 
 

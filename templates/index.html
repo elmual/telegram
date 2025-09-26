@@ -813,7 +813,7 @@
             <thead>
               <tr>
                 {% for col in table_data[0] %}
-                <th class="bg-light">
+                <th class="bg-info text-white">
                   <div class="vertical-header">{{ col }}</div>
                 </th>
                 {% endfor %}
@@ -822,7 +822,7 @@
             <tbody>
               {% for row in table_data %}
               <tr
-                class="{% if row['Ortalama imtahan nəticəsi %'] < 70 %}table-danger{% elif row['Ortalama imtahan nəticəsi %'] < 85 %}table-warning{% else %}table-success{% endif %}"
+                class="{% if row['Ortalama imtahan nəticəsi %'] < 70 %}table-danger{% elif row['Ortalama imtahan nəticəsi %'] < 85 %}table-warning{% elif row['Ortalama imtahan nəticəsi %'] < 90 %}table-success{% else %}table-info{% endif %}"
               >
                 {% for col in row %} {% if col == 'Abituriyentlərin ad və soyadı' %} {# Ad sütunu #}
                 <td class="col-ad">
