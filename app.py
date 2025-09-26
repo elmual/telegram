@@ -200,7 +200,7 @@ def get_overall_report():
 # --- Excel-dən Quiz nəticələri oxuma ---
 def get_quizz_data():
     file_path = os.path.join("static", "data", "quizz.xlsx")
-    
+
     if not os.path.exists(file_path):
         print(f"Fayl tapılmadı: {file_path}")
         return pd.DataFrame()
@@ -212,23 +212,29 @@ def get_quizz_data():
         print("XƏTA: DataFrame boşdur və ya kifayət qədər sütun yoxdur!")
         return pd.DataFrame()
 
-    # 🟢 Dəyiş: 'Ad' → 'Abituriyentlərin ad və soyadı'
+    # Ad sütununu dəyiş
     df = df.rename(columns={df.columns[0]: 'Abituriyentlərin ad və soyadı'})
 
-    # Test sütunlarını ayır — yeni adı nəzərə al!
+    # Test sütunlarını ayır
     test_cols = [col for col in df.columns if col != 'Abituriyentlərin ad və soyadı' and col != 'Ortalama']
 
     df[test_cols] = df[test_cols].apply(pd.to_numeric, errors='coerce')
 
-    # 🟢 Dəyiş: 'Ortalama' → 'Ortalama imtahan nəticəsi %'
+    # Ortalama hesablama
     df["Ortalama imtahan nəticəsi %"] = df[test_cols].mean(axis=1).round(2)
 
-    # Köhnə 'Ortalama' sütununu sil (əgər varsa)
+    # Köhnə 'Ortalama' sütununu sil
     if 'Ortalama' in df.columns:
         df = df.drop(columns=['Ortalama'])
 
     # Sıra sütunu əlavə et
     df.insert(0, 'Sıra', range(1, len(df) + 1))
+
+    # 🔹 Ortalama nəticəyə görə azalan sıra ilə sırala
+    df = df.sort_values(by="Ortalama imtahan nəticəsi %", ascending=False)
+
+    # Sıra sütununu yenilə (sıralamadan sonra)
+    df['Sıra'] = range(1, len(df) + 1)
 
     return df
 
