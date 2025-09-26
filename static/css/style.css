@@ -58,7 +58,7 @@
   justify-content: center;
   background: white;
   border-radius: 15px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   padding: 15px;
 }
 .swiper-slide img {
@@ -67,7 +67,6 @@
   border-radius: 50%;
   margin-bottom: 10px;
 }
-
 
 .swiper-slide h3 {
   font-size: 24px;
@@ -93,6 +92,49 @@
   background: #000; /* pagination rəngi */
 }
 
-.accordion-body{
+.accordion-body {
   padding: 0;
 }
+
+/* BÜTÜN sütun başlıqları üçün şaquli stil */
+.vertical-header {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  padding: 6px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  min-width: 25px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ad sütunu — məzmun qədər en */
+.col-ad {
+  width: auto !important;
+  white-space: nowrap;
+  text-align: left;
+  padding-left: 1rem;
+  font-weight: 500;
+}
+
+/* Digər sütunlar — mümkün qədər dar */
+.col-min {
+  width: 1%;
+  white-space: nowrap;
+  min-width: 25px;
+  max-width: 35px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* Mobil scroll */
+.table-responsive-quizz {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+

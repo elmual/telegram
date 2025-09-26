@@ -20,6 +20,7 @@ db11 = client["telegram_bot_11"]
 answers11 = db11["answers"]
 students11 = db11["students"]
 
+
 # --- KÖMƏKÇİ FUNKSİYALAR ---
 def _prepare_answers():
     all_answers = []
@@ -29,33 +30,53 @@ def _prepare_answers():
         all_answers.append(ans)
     return all_answers
 
+
 def _prepare_students():
     students = {}
     for s in list(students10.find()) + list(students11.find()):
         students[s["user_id"]] = s
     return students
 
+
 def is_weekday(ts):
     """Yalnız iş günləri (Mon-Fri)"""
     return ts.weekday() < 5
 
+
 def _generate_report(df, students, limits=None):
     """Report generator"""
     if df.empty:
-        report = pd.DataFrame(columns=["user_id","user_name","sual_sayi","duz","sehv","faiz","cavabsiz"])
+        report = pd.DataFrame(
+            columns=[
+                "user_id",
+                "user_name",
+                "sual_sayi",
+                "duz",
+                "sehv",
+                "faiz",
+                "cavabsiz",
+            ]
+        )
     else:
         df["correct"] = df["selected_option"] == df["correct_option"]
-        report = df.groupby("user_id").agg(
-            sual_sayi=("user_id", "count"),
-            duz=("correct", "sum")
-        ).reset_index()
+        report = (
+            df.groupby("user_id")
+            .agg(sual_sayi=("user_id", "count"), duz=("correct", "sum"))
+            .reset_index()
+        )
 
-    report["user_name"] = report["user_id"].apply(lambda uid: students[uid]["full_name"])
+    report["user_name"] = report["user_id"].apply(
+        lambda uid: students[uid]["full_name"]
+    )
     report["sehv"] = report["sual_sayi"] - report["duz"]
-    report["faiz"] = ((report["duz"]/report["sual_sayi"])*100).round(0).fillna(0).astype(int)
+    report["faiz"] = (
+        ((report["duz"] / report["sual_sayi"]) * 100).round(0).fillna(0).astype(int)
+    )
 
     if limits:
-        report["cavabsiz"] = report.apply(lambda row: max(0, limits.get(row["user_id"], 0) - row["sual_sayi"]), axis=1)
+        report["cavabsiz"] = report.apply(
+            lambda row: max(0, limits.get(row["user_id"], 0) - row["sual_sayi"]), axis=1
+        )
         report["sual_sayi"] = report["sual_sayi"] + report["cavabsiz"]
     else:
         report["cavabsiz"] = 0
@@ -64,20 +85,33 @@ def _generate_report(df, students, limits=None):
     for uid, student in students.items():
         if uid not in report["user_id"].values:
             sual_count = limits.get(uid, 0) if limits else 0
-            report = pd.concat([report, pd.DataFrame([{
-                "user_id": uid,
-                "user_name": student.get("full_name"),
-                "sual_sayi": sual_count,
-                "duz": 0,
-                "sehv": 0,
-                "faiz": 0,
-                "cavabsiz": sual_count
-            }])], ignore_index=True)
+            report = pd.concat(
+                [
+                    report,
+                    pd.DataFrame(
+                        [
+                            {
+                                "user_id": uid,
+                                "user_name": student.get("full_name"),
+                                "sual_sayi": sual_count,
+                                "duz": 0,
+                                "sehv": 0,
+                                "faiz": 0,
+                                "cavabsiz": sual_count,
+                            }
+                        ]
+                    ),
+                ],
+                ignore_index=True,
+            )
 
     hidden_ids = [uid for uid, st in students.items() if st.get("hidden")]
     report = report[~report["user_id"].isin(hidden_ids)]
-    report = report.sort_values(by=["cavabsiz","faiz","duz"], ascending=[True,False,False]).reset_index(drop=True)
+    report = report.sort_values(
+        by=["cavabsiz", "faiz", "duz"], ascending=[True, False, False]
+    ).reset_index(drop=True)
     return report
+
 
 # --- LIMITS ---
 def get_daily_limits():
@@ -88,6 +122,7 @@ def get_daily_limits():
         limits[s["user_id"]] = 12
     return limits
 
+
 def get_weekly_limits():
     limits = {}
     for s in list(students10.find()):
@@ -95,6 +130,7 @@ def get_weekly_limits():
     for s in list(students11.find()):
         limits[s["user_id"]] = 12 * 5
     return limits
+
 
 def get_overall_limits(all_answers):
     """Ümumi limit: polls-da maksimum question_idx + 1"""
@@ -115,6 +151,7 @@ def get_overall_limits(all_answers):
 
     return limits
 
+
 # --- REPORTS ---
 def get_daily_report():
     today = datetime.now(timezone.utc).date()
@@ -126,14 +163,18 @@ def get_daily_report():
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students, limits=limits)
 
+
 def get_weekly_report():
     today = datetime.now(timezone.utc)
     start_of_week = today - timedelta(days=today.weekday())
     start = datetime.combine(start_of_week.date(), time.min, tzinfo=timezone.utc)
-    end = datetime.combine((start_of_week + timedelta(days=5)).date(), time.max, tzinfo=timezone.utc)
+    end = datetime.combine(
+        (start_of_week + timedelta(days=5)).date(), time.max, tzinfo=timezone.utc
+    )
 
     all_answers = [
-        a for a in _prepare_answers()
+        a
+        for a in _prepare_answers()
         if start <= a["timestamp"] <= end and is_weekday(a["timestamp"])
     ]
 
@@ -142,7 +183,9 @@ def get_weekly_report():
 
     # yalnız bu həftə cavab verən tələbələr üçün limit tətbiq edirik
     df = pd.DataFrame(all_answers)
-    used_limits = {uid: limits[uid] for uid in df["user_id"].unique()} if not df.empty else None
+    used_limits = (
+        {uid: limits[uid] for uid in df["user_id"].unique()} if not df.empty else None
+    )
     return _generate_report(df, students, limits=used_limits)
 
 
@@ -153,19 +196,59 @@ def get_overall_report():
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students, limits=limits)
 
+
+# --- Excel-dən Quiz nəticələri oxuma ---
+def get_quizz_data():
+    file_path = os.path.join("static", "data", "quizz.xlsx")
+    
+    if not os.path.exists(file_path):
+        print(f"Fayl tapılmadı: {file_path}")
+        return pd.DataFrame()
+
+    df = pd.read_excel(file_path, header=0)
+    df = df.dropna(axis=1, how="all")
+
+    if df.empty or len(df.columns) < 2:
+        print("XƏTA: DataFrame boşdur və ya kifayət qədər sütun yoxdur!")
+        return pd.DataFrame()
+
+    # 🟢 Dəyiş: 'Ad' → 'Abituriyentlərin ad və soyadı'
+    df = df.rename(columns={df.columns[0]: 'Abituriyentlərin ad və soyadı'})
+
+    # Test sütunlarını ayır — yeni adı nəzərə al!
+    test_cols = [col for col in df.columns if col != 'Abituriyentlərin ad və soyadı' and col != 'Ortalama']
+
+    df[test_cols] = df[test_cols].apply(pd.to_numeric, errors='coerce')
+
+    # 🟢 Dəyiş: 'Ortalama' → 'Ortalama imtahan nəticəsi %'
+    df["Ortalama imtahan nəticəsi %"] = df[test_cols].mean(axis=1).round(2)
+
+    # Köhnə 'Ortalama' sütununu sil (əgər varsa)
+    if 'Ortalama' in df.columns:
+        df = df.drop(columns=['Ortalama'])
+
+    # Sıra sütunu əlavə et
+    df.insert(0, 'Sıra', range(1, len(df) + 1))
+
+    return df
+
 # --- FLASK ROUTE ---
 @app.route("/")
 def index():
     daily = get_daily_report()
     weekly = get_weekly_report()
     overall = get_overall_report()
+    quizz_data = get_quizz_data()  # ← Artıq funksiya mövcuddur!
+
     return render_template(
         "index.html",
         daily=daily.to_dict(orient="records"),
         weekly=weekly.to_dict(orient="records"),
-        overall=overall.to_dict(orient="records")
+        overall=overall.to_dict(orient="records"),
+        table_data=quizz_data.to_dict(orient="records"),  # ← düzgün adla ötürürük
     )
 
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT",5000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)

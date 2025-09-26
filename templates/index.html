@@ -365,7 +365,7 @@
       id="yazili"
       style="scroll-margin-top: 110px"
     >
-      <h2 class="mt-3 mb-4">📖 Yazılı test imtahan nəticəsi</h2>
+      <h2 class="mt-3 mb-4">📝 Yazılı test imtahan nəticəsi</h2>
 
       <div class="swiper">
         <div class="swiper-wrapper">
@@ -792,6 +792,49 @@
 
         <!-- Pagination -->
         <div class="swiper-pagination"></div>
+      </div>
+    </div>
+
+    <!-- Quizz hesabat -->
+    <div
+      class="container img-thumbnail mt-4"
+      data-aos="fade-up"
+      data-aos-delay="200"
+      id="yazili"
+      style="scroll-margin-top: 110px"
+    >
+      <h2 class="mt-3 mb-4">📊 Onlayn imtahan nəticələri</h2>
+      <div class="card-body">
+        <div class="table-responsive-quizz">
+          <table class="table table-bordered table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                {% for col in table_data[0] %}
+                <th class="bg-light">
+                  <div class="vertical-header">{{ col }}</div>
+                </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in table_data %}
+              <tr
+                class="{% if row['Ortalama imtahan nəticəsi %'] < 70 %}table-danger{% elif row['Ortalama imtahan nəticəsi %'] < 85 %}table-warning{% else %}table-success{% endif %}"
+              >
+                {% for col in row %} {% if col == 'Abituriyentlərin ad və soyadı' %} {# Ad sütunu #}
+                <td class="col-ad">
+                  {{ row[col] if row[col] == row[col] else '-' }}
+                </td>
+                {% else %}
+                <td class="col-min">
+                  {{ row[col] if row[col] == row[col] else '-' }}
+                </td>
+                {% endif %} {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
