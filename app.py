@@ -2,9 +2,13 @@ import os
 from flask import Flask, render_template
 from pymongo import MongoClient
 import pandas as pd
-from datetime import datetime, timedelta, time, timezone
+from datetime import datetime, timedelta, time
+import pytz 
 
 app = Flask(__name__)
+
+# --- Bakı vaxt qurşağı ---
+BAKU_TZ = pytz.timezone("Asia/Baku")
 
 # --- MongoDB qoşulmalar ---
 MONGO_URI = "mongodb+srv://erlams:erlams423@cluster0.wwpua.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -25,8 +29,12 @@ students11 = db11["students"]
 def _prepare_answers():
     all_answers = []
     for ans in list(answers10.find()) + list(answers11.find()):
-        if ans.get("timestamp") and ans["timestamp"].tzinfo is None:
-            ans["timestamp"] = ans["timestamp"].replace(tzinfo=timezone.utc)
+        if ans.get("timestamp"):
+            # əgər timestamp-na timezone yoxdur → Bakı vaxtına çevir
+            if ans["timestamp"].tzinfo is None:
+                ans["timestamp"] = ans["timestamp"].replace(tzinfo=pytz.UTC).astimezone(BAKU_TZ)
+            else:
+                ans["timestamp"] = ans["timestamp"].astimezone(BAKU_TZ)
         all_answers.append(ans)
     return all_answers
 
@@ -154,23 +162,36 @@ def get_overall_limits(all_answers):
 
 # --- REPORTS ---
 def get_daily_report():
-    today = datetime.now(timezone.utc).date()
-    start = datetime.combine(today, time.min, tzinfo=timezone.utc)
+    today = datetime.now(BAKU_TZ).date()
+
+    # 🔹 Əgər şənbə (5) və ya bazar (6)-dırsa, boş DataFrame qaytar
+    if today.weekday() >= 5:
+        return pd.DataFrame(
+            columns=[
+                "user_id",
+                "user_name",
+                "sual_sayi",
+                "duz",
+                "sehv",
+                "faiz",
+                "cavabsiz",
+            ]
+        )
+
+    start = BAKU_TZ.localize(datetime.combine(today, time.min))
     end = start + timedelta(days=1)
+    
     all_answers = [a for a in _prepare_answers() if start <= a["timestamp"] < end]
     students = _prepare_students()
     limits = get_daily_limits()
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students, limits=limits)
 
-
 def get_weekly_report():
-    today = datetime.now(timezone.utc)
+    today = datetime.now(BAKU_TZ)
     start_of_week = today - timedelta(days=today.weekday())
-    start = datetime.combine(start_of_week.date(), time.min, tzinfo=timezone.utc)
-    end = datetime.combine(
-        (start_of_week + timedelta(days=5)).date(), time.max, tzinfo=timezone.utc
-    )
+    start = BAKU_TZ.localize(datetime.combine(start_of_week.date(), time.min))
+    end = BAKU_TZ.localize(datetime.combine((start_of_week + timedelta(days=5)).date(), time.max))
 
     all_answers = [
         a
@@ -213,30 +234,35 @@ def get_quizz_data():
         return pd.DataFrame()
 
     # Ad sütununu dəyiş
-    df = df.rename(columns={df.columns[0]: 'Abituriyentlərin ad və soyadı'})
+    df = df.rename(columns={df.columns[0]: "Abituriyentlərin ad və soyadı"})
 
     # Test sütunlarını ayır
-    test_cols = [col for col in df.columns if col != 'Abituriyentlərin ad və soyadı' and col != 'Ortalama']
+    test_cols = [
+        col
+        for col in df.columns
+        if col != "Abituriyentlərin ad və soyadı" and col != "Ortalama"
+    ]
 
-    df[test_cols] = df[test_cols].apply(pd.to_numeric, errors='coerce')
+    df[test_cols] = df[test_cols].apply(pd.to_numeric, errors="coerce")
 
     # Ortalama hesablama
     df["Ortalama imtahan nəticəsi %"] = df[test_cols].mean(axis=1).round(2)
 
     # Köhnə 'Ortalama' sütununu sil
-    if 'Ortalama' in df.columns:
-        df = df.drop(columns=['Ortalama'])
+    if "Ortalama" in df.columns:
+        df = df.drop(columns=["Ortalama"])
 
     # Sıra sütunu əlavə et
-    df.insert(0, 'Sıra', range(1, len(df) + 1))
+    df.insert(0, "Sıra", range(1, len(df) + 1))
 
     # 🔹 Ortalama nəticəyə görə azalan sıra ilə sırala
     df = df.sort_values(by="Ortalama imtahan nəticəsi %", ascending=False)
 
     # Sıra sütununu yenilə (sıralamadan sonra)
-    df['Sıra'] = range(1, len(df) + 1)
+    df["Sıra"] = range(1, len(df) + 1)
 
     return df
+
 
 # --- FLASK ROUTE ---
 @app.route("/")
