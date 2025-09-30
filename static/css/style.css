@@ -67,6 +67,15 @@
   object-fit: cover;
   border-radius: 50%;
   margin-bottom: 10px;
+  transition: .3s;
+}
+
+.swiper-slide img:hover {
+  filter: brightness(1.05);
+  transform: scale(1.02);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.3),   /* yaxın kölgə */
+    0 12px 24px rgba(0, 0, 0, 0.2); /* uzaq yumşaq kölgə */
 }
 
 .swiper-slide h3 {
