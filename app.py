@@ -162,25 +162,32 @@ def get_overall_limits(all_answers):
 
 # --- REPORTS ---
 def get_daily_report():
-    today = datetime.now(BAKU_TZ).date()
+    now = datetime.now(BAKU_TZ)
+    today_start = BAKU_TZ.localize(datetime.combine(now.date(), time(7, 30)))
+    if now < today_start:
+        today_start -= timedelta(days=1)
 
-    # 🔹 Əgər şənbə (5) və ya bazar (6)-dırsa, boş DataFrame qaytar
-    if today.weekday() >= 5:
-        return pd.DataFrame(
-            columns=[
-                "user_id",
-                "user_name",
-                "sual_sayi",
-                "duz",
-                "sehv",
-                "faiz",
-                "cavabsiz",
-            ]
-        )
-
-    start = BAKU_TZ.localize(datetime.combine(today, time.min))
+    start = today_start
     end = start + timedelta(days=1)
-    
+
+    # 🔹 Həftəsonu üçün sıfır hesabat
+    if start.weekday() >= 5:
+        # Burada bütün sütunlar 0 olacaq
+        students = _prepare_students()
+        data = []
+        for s in students:
+            data.append({
+                "user_id": s["id"],
+                "user_name": s["name"],
+                "sual_sayi": 0,
+                "duz": 0,
+                "sehv": 0,
+                "faiz": 0,
+                "cavabsiz": 0
+            })
+        return pd.DataFrame(data)
+
+    # 🔹 Normal həftə içi
     all_answers = [a for a in _prepare_answers() if start <= a["timestamp"] < end]
     students = _prepare_students()
     limits = get_daily_limits()
