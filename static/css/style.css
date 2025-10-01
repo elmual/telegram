@@ -41,7 +41,7 @@
   margin: 0;
 }
 
-#sehv{
+#sehv {
   color: red;
 }
 
@@ -67,15 +67,14 @@
   object-fit: cover;
   border-radius: 50%;
   margin-bottom: 10px;
-  transition: .3s;
+  transition: 0.3s;
 }
 
 .swiper-slide img:hover {
   filter: brightness(1.05);
   transform: scale(1.02);
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),   /* yaxın kölgə */
-    0 12px 24px rgba(0, 0, 0, 0.2); /* uzaq yumşaq kölgə */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3),
+    /* yaxın kölgə */ 0 12px 24px rgba(0, 0, 0, 0.2); /* uzaq yumşaq kölgə */
 }
 
 .swiper-slide h3 {
@@ -147,3 +146,21 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Pulse animasiyası */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* İstifadə üçün class */
+.pulse-title {
+  display: inline-block;
+  animation: pulse 1s infinite;
+}
