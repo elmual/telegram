@@ -54,10 +54,11 @@ def _prepare_answers():
     return all_answers
 
 
-
 def _prepare_students():
     students = {}
-    for s in list(students10.find({"user_id": {"$exists": True}})) + list(students11.find({"user_id": {"$exists": True}})):
+    for s in list(students10.find({"user_id": {"$exists": True}})) + list(
+        students11.find({"user_id": {"$exists": True}})
+    ):
         students[s["user_id"]] = s
     return students
 
@@ -88,7 +89,9 @@ def _generate_report(df, students, limits=None):
         )
 
     report["user_name"] = report["user_id"].apply(
-        lambda uid: students[uid]["full_name"]
+        lambda uid: students.get(uid, {}).get("full_name")
+        or students.get(uid, {}).get("name")
+        or "Naməlum"
     )
     report["sehv"] = report["sual_sayi"] - report["duz"]
     report["faiz"] = (
@@ -137,13 +140,19 @@ def _generate_report(df, students, limits=None):
 # --- LIMITS ---
 def get_daily_limits():
     limits = {s["user_id"]: 10 for s in students10.find({"user_id": {"$exists": True}})}
-    limits.update({s["user_id"]: 12 for s in students11.find({"user_id": {"$exists": True}})})
+    limits.update(
+        {s["user_id"]: 12 for s in students11.find({"user_id": {"$exists": True}})}
+    )
     return limits
 
 
 def get_weekly_limits():
-    limits = {s["user_id"]: 10*5 for s in students10.find({"user_id": {"$exists": True}})}
-    limits.update({s["user_id"]: 12*5 for s in students11.find({"user_id": {"$exists": True}})})
+    limits = {
+        s["user_id"]: 10 * 5 for s in students10.find({"user_id": {"$exists": True}})
+    }
+    limits.update(
+        {s["user_id"]: 12 * 5 for s in students11.find({"user_id": {"$exists": True}})}
+    )
     return limits
 
 
@@ -178,15 +187,17 @@ def get_daily_report():
         students = _prepare_students()
         data = []
         for s in students.values():
-            data.append({
-                "user_id": s["user_id"],
-                "user_name": s["full_name"],
-                "sual_sayi": 0,
-                "duz": 0,
-                "sehv": 0,
-                "faiz": 0,
-                "cavabsiz": 0
-            })
+            data.append(
+                {
+                    "user_id": s["user_id"],
+                    "user_name": s["full_name"],
+                    "sual_sayi": 0,
+                    "duz": 0,
+                    "sehv": 0,
+                    "faiz": 0,
+                    "cavabsiz": 0,
+                }
+            )
         return pd.DataFrame(data)
 
     all_answers = [a for a in _prepare_answers() if start <= a["timestamp"] < end]
@@ -200,7 +211,9 @@ def get_weekly_report():
     today = datetime.now(BAKU_TZ)
     start_of_week = today - timedelta(days=today.weekday())
     start = BAKU_TZ.localize(datetime.combine(start_of_week.date(), time.min))
-    end = BAKU_TZ.localize(datetime.combine((start_of_week + timedelta(days=5)).date(), time.max))
+    end = BAKU_TZ.localize(
+        datetime.combine((start_of_week + timedelta(days=5)).date(), time.max)
+    )
 
     all_answers = [
         a
@@ -211,7 +224,9 @@ def get_weekly_report():
     students = _prepare_students()
     limits = get_weekly_limits()
     df = pd.DataFrame(all_answers)
-    used_limits = {uid: limits[uid] for uid in df["user_id"].unique()} if not df.empty else None
+    used_limits = (
+        {uid: limits[uid] for uid in df["user_id"].unique()} if not df.empty else None
+    )
     return _generate_report(df, students, limits=used_limits)
 
 
@@ -237,14 +252,18 @@ def get_quizz_data():
         return pd.DataFrame()
 
     df = df.rename(columns={df.columns[0]: "Abituriyentlərin ad və soyadı"})
-    test_cols = [col for col in df.columns if col != "Abituriyentlərin ad və soyadı" and col != "Ortalama"]
+    test_cols = [
+        col
+        for col in df.columns
+        if col != "Abituriyentlərin ad və soyadı" and col != "Ortalama"
+    ]
     df[test_cols] = df[test_cols].apply(pd.to_numeric, errors="coerce")
     df["Ortalama imtahan nəticəsi %"] = df[test_cols].mean(axis=1).round(2)
     if "Ortalama" in df.columns:
         df = df.drop(columns=["Ortalama"])
-    df.insert(0, "Sıra", range(1, len(df)+1))
+    df.insert(0, "Sıra", range(1, len(df) + 1))
     df = df.sort_values(by="Ortalama imtahan nəticəsi %", ascending=False)
-    df["Sıra"] = range(1, len(df)+1)
+    df["Sıra"] = range(1, len(df) + 1)
     return df
 
 
