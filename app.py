@@ -3,7 +3,7 @@ from flask import Flask, render_template
 from pymongo import MongoClient
 import pandas as pd
 from datetime import datetime, timedelta, time
-import pytz 
+import pytz
 
 app = Flask(__name__)
 
@@ -29,30 +29,44 @@ students11 = db11["students"]
 def _prepare_answers():
     all_answers = []
     for ans in list(answers10.find()) + list(answers11.find()):
-        if ans.get("timestamp"):
-            # əgər timestamp-na timezone yoxdur → Bakı vaxtına çevir
-            if ans["timestamp"].tzinfo is None:
-                ans["timestamp"] = ans["timestamp"].replace(tzinfo=pytz.UTC).astimezone(BAKU_TZ)
+        ts = ans.get("timestamp")
+
+        if ts:
+            # Əgər timestamp string-disə, datetime-a çevir
+            if isinstance(ts, str):
+                try:
+                    ts = datetime.fromisoformat(ts)
+                except Exception:
+                    try:
+                        ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                    except Exception:
+                        continue  # format tam fərqlidirsə, bu cavabı keç
+
+            # Vaxt zonasını əlavə et
+            if ts.tzinfo is None:
+                ts = pytz.UTC.localize(ts).astimezone(BAKU_TZ)
             else:
-                ans["timestamp"] = ans["timestamp"].astimezone(BAKU_TZ)
+                ts = ts.astimezone(BAKU_TZ)
+
+            ans["timestamp"] = ts
+
         all_answers.append(ans)
     return all_answers
 
 
+
 def _prepare_students():
     students = {}
-    for s in list(students10.find()) + list(students11.find()):
+    for s in list(students10.find({"user_id": {"$exists": True}})) + list(students11.find({"user_id": {"$exists": True}})):
         students[s["user_id"]] = s
     return students
 
 
 def is_weekday(ts):
-    """Yalnız iş günləri (Mon-Fri)"""
     return ts.weekday() < 5
 
 
 def _generate_report(df, students, limits=None):
-    """Report generator"""
     if df.empty:
         report = pd.DataFrame(
             columns=[
@@ -89,7 +103,6 @@ def _generate_report(df, students, limits=None):
     else:
         report["cavabsiz"] = 0
 
-    # heç cavab verməyən tələbələr
     for uid, student in students.items():
         if uid not in report["user_id"].values:
             sual_count = limits.get(uid, 0) if limits else 0
@@ -123,38 +136,29 @@ def _generate_report(df, students, limits=None):
 
 # --- LIMITS ---
 def get_daily_limits():
-    limits = {}
-    for s in list(students10.find()):
-        limits[s["user_id"]] = 10
-    for s in list(students11.find()):
-        limits[s["user_id"]] = 12
+    limits = {s["user_id"]: 10 for s in students10.find({"user_id": {"$exists": True}})}
+    limits.update({s["user_id"]: 12 for s in students11.find({"user_id": {"$exists": True}})})
     return limits
 
 
 def get_weekly_limits():
-    limits = {}
-    for s in list(students10.find()):
-        limits[s["user_id"]] = 10 * 5  # iş günləri
-    for s in list(students11.find()):
-        limits[s["user_id"]] = 12 * 5
+    limits = {s["user_id"]: 10*5 for s in students10.find({"user_id": {"$exists": True}})}
+    limits.update({s["user_id"]: 12*5 for s in students11.find({"user_id": {"$exists": True}})})
     return limits
 
 
 def get_overall_limits(all_answers):
-    """Ümumi limit: polls-da maksimum question_idx + 1"""
     limits = {}
     students = _prepare_students()
 
-    # Bot10
     bot10_polls = db10["polls"].find()
     max_idx_10 = max([p["question_idx"] for p in bot10_polls], default=-1)
-    for s in students10.find():
+    for s in students10.find({"user_id": {"$exists": True}}):
         limits[s["user_id"]] = max_idx_10 + 1
 
-    # Bot11
     bot11_polls = db11["polls"].find()
     max_idx_11 = max([p["question_idx"] for p in bot11_polls], default=-1)
-    for s in students11.find():
+    for s in students11.find({"user_id": {"$exists": True}}):
         limits[s["user_id"]] = max_idx_11 + 1
 
     return limits
@@ -170,15 +174,13 @@ def get_daily_report():
     start = today_start
     end = start + timedelta(days=1)
 
-    # 🔹 Həftəsonu üçün sıfır hesabat
     if start.weekday() >= 5:
-        # Burada bütün sütunlar 0 olacaq
         students = _prepare_students()
         data = []
-        for s in students:
+        for s in students.values():
             data.append({
-                "user_id": s["id"],
-                "user_name": s["name"],
+                "user_id": s["user_id"],
+                "user_name": s["full_name"],
                 "sual_sayi": 0,
                 "duz": 0,
                 "sehv": 0,
@@ -187,12 +189,12 @@ def get_daily_report():
             })
         return pd.DataFrame(data)
 
-    # 🔹 Normal həftə içi
     all_answers = [a for a in _prepare_answers() if start <= a["timestamp"] < end]
     students = _prepare_students()
     limits = get_daily_limits()
     df = pd.DataFrame(all_answers)
     return _generate_report(df, students, limits=limits)
+
 
 def get_weekly_report():
     today = datetime.now(BAKU_TZ)
@@ -208,12 +210,8 @@ def get_weekly_report():
 
     students = _prepare_students()
     limits = get_weekly_limits()
-
-    # yalnız bu həftə cavab verən tələbələr üçün limit tətbiq edirik
     df = pd.DataFrame(all_answers)
-    used_limits = (
-        {uid: limits[uid] for uid in df["user_id"].unique()} if not df.empty else None
-    )
+    used_limits = {uid: limits[uid] for uid in df["user_id"].unique()} if not df.empty else None
     return _generate_report(df, students, limits=used_limits)
 
 
@@ -228,46 +226,25 @@ def get_overall_report():
 # --- Excel-dən Quiz nəticələri oxuma ---
 def get_quizz_data():
     file_path = os.path.join("static", "data", "quizz.xlsx")
-
     if not os.path.exists(file_path):
         print(f"Fayl tapılmadı: {file_path}")
         return pd.DataFrame()
 
     df = pd.read_excel(file_path, header=0)
     df = df.dropna(axis=1, how="all")
-
     if df.empty or len(df.columns) < 2:
         print("XƏTA: DataFrame boşdur və ya kifayət qədər sütun yoxdur!")
         return pd.DataFrame()
 
-    # Ad sütununu dəyiş
     df = df.rename(columns={df.columns[0]: "Abituriyentlərin ad və soyadı"})
-
-    # Test sütunlarını ayır
-    test_cols = [
-        col
-        for col in df.columns
-        if col != "Abituriyentlərin ad və soyadı" and col != "Ortalama"
-    ]
-
+    test_cols = [col for col in df.columns if col != "Abituriyentlərin ad və soyadı" and col != "Ortalama"]
     df[test_cols] = df[test_cols].apply(pd.to_numeric, errors="coerce")
-
-    # Ortalama hesablama
     df["Ortalama imtahan nəticəsi %"] = df[test_cols].mean(axis=1).round(2)
-
-    # Köhnə 'Ortalama' sütununu sil
     if "Ortalama" in df.columns:
         df = df.drop(columns=["Ortalama"])
-
-    # Sıra sütunu əlavə et
-    df.insert(0, "Sıra", range(1, len(df) + 1))
-
-    # 🔹 Ortalama nəticəyə görə azalan sıra ilə sırala
+    df.insert(0, "Sıra", range(1, len(df)+1))
     df = df.sort_values(by="Ortalama imtahan nəticəsi %", ascending=False)
-
-    # Sıra sütununu yenilə (sıralamadan sonra)
-    df["Sıra"] = range(1, len(df) + 1)
-
+    df["Sıra"] = range(1, len(df)+1)
     return df
 
 
@@ -277,15 +254,15 @@ def index():
     daily = get_daily_report()
     weekly = get_weekly_report()
     overall = get_overall_report()
-    quizz_data = get_quizz_data()  # ← Artıq funksiya mövcuddur!
-
+    quizz_data = get_quizz_data()
     return render_template(
         "index.html",
         daily=daily.to_dict(orient="records"),
         weekly=weekly.to_dict(orient="records"),
         overall=overall.to_dict(orient="records"),
-        table_data=quizz_data.to_dict(orient="records"),  # ← düzgün adla ötürürük
+        table_data=quizz_data.to_dict(orient="records"),
     )
+
 
 if __name__ == "__main__":
     app.run(debug=True)
