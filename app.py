@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template
 from pymongo import MongoClient
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta, time
 import pytz
 
