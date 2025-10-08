@@ -88,16 +88,31 @@ def _generate_report(df, students, limits=None):
             .reset_index()
         )
 
+    # 🔹 user_name əlavə et
     report["user_name"] = report["user_id"].apply(
         lambda uid: students.get(uid, {}).get("full_name")
         or students.get(uid, {}).get("name")
         or "Naməlum"
     )
-    report["sehv"] = report["sual_sayi"] - report["duz"]
+
+    # 🔹 Rəqəmləri tam numeric-ə çevir (səhər boş gələndə də işləsin)
+    report["duz"] = pd.to_numeric(report.get("duz", 0), errors="coerce").fillna(0)
+    report["sual_sayi"] = pd.to_numeric(
+        report.get("sual_sayi", 0), errors="coerce"
+    ).fillna(0)
+
+    # 🔹 Səhvlər
+    report["sehv"] = (report["sual_sayi"] - report["duz"]).clip(lower=0)
+
+    # 🔹 Faiz hesabla (sıfıra bölünmədən qorumaqla)
+    report["faiz"] = np.where(
+        report["sual_sayi"] > 0, ((report["duz"] / report["sual_sayi"]) * 100), 0
+    )
     report["faiz"] = (
-        ((report["duz"] / report["sual_sayi"]) * 100).round(0).fillna(0).astype(int)
+        pd.to_numeric(report["faiz"], errors="coerce").fillna(0).round(0).astype(int)
     )
 
+    # 🔹 cavabsiz suallar
     if limits:
         report["cavabsiz"] = report.apply(
             lambda row: max(0, limits.get(row["user_id"], 0) - row["sual_sayi"]), axis=1
@@ -106,6 +121,7 @@ def _generate_report(df, students, limits=None):
     else:
         report["cavabsiz"] = 0
 
+    # 🔹 cavabsiz tələbələr üçün sətr əlavə et
     for uid, student in students.items():
         if uid not in report["user_id"].values:
             sual_count = limits.get(uid, 0) if limits else 0
@@ -129,11 +145,15 @@ def _generate_report(df, students, limits=None):
                 ignore_index=True,
             )
 
+    # 🔹 gizli tələbələri çıxart
     hidden_ids = [uid for uid, st in students.items() if st.get("hidden")]
     report = report[~report["user_id"].isin(hidden_ids)]
+
+    # 🔹 sıralama
     report = report.sort_values(
         by=["cavabsiz", "faiz", "duz"], ascending=[True, False, False]
     ).reset_index(drop=True)
+
     return report
 
 
