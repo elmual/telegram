@@ -260,18 +260,25 @@ def get_quizz_data():
 # --- FLASK ROUTE ---
 @app.route("/")
 def index():
-    daily = get_daily_report()
-    weekly = get_weekly_report()
-    # overall = get_overall_report()
-    quizz_data = get_quizz_data()
-    
-    return render_template(
-        "index.html",
-        daily=daily.to_dict(orient="records") if not daily.empty else [],
-        weekly=weekly.to_dict(orient="records") if not weekly.empty else [],
-        # overall=overall.to_dict(orient="records") if not overall.empty else [],
-        table_data=quizz_data.to_dict(orient="records") if not quizz_data.empty else [],
-    )
+    try:
+        # 1. Yüngül hesabatları çəkirik
+        daily_df = get_daily_report()
+        weekly_df = get_weekly_report()
+        quizz_df = get_quizz_data()
+
+        # 2. Burada overall_df-i çağırmırıq ki, RAM dolmasın
+        # Amma render_template-ə boş bir siyahı ötürürük ki, xəta verməsin
+        
+        return render_template(
+            "index.html",
+            daily=daily_df.to_dict(orient="records") if not daily_df.empty else [],
+            weekly=weekly_df.to_dict(orient="records") if not weekly_df.empty else [],
+            overall=[],  # <--- Bura sadəcə [] yazın, dəyişən adını yox
+            table_data=quizz_df.to_dict(orient="records") if not quizz_df.empty else []
+        )
+    except Exception as e:
+        print(f"Server xətası: {e}")
+        return "Xəta baş verdi, zəhmət olmasa loglara baxın.", 500
 
 
 if __name__ == "__main__":
