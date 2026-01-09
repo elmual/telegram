@@ -34,30 +34,27 @@ students11 = db11["students"]
 
 # --- KÖMƏKÇİ FUNKSİYALAR ---
 def _prepare_answers(start_date=None, end_date=None):
-    all_answers = []
     query = {}
     if start_date and end_date:
         query = {"timestamp": {"$gte": start_date, "$lt": end_date}}
 
-    # RAM-ı qorumaq üçün yalnız lazım olan sütunları çəkirik
     projection = {"user_id": 1, "selected_option": 1, "correct_option": 1, "timestamp": 1}
 
-    for coll in [answers10, answers11]:
-        for ans in coll.find(query, projection):
-            ts = ans.get("timestamp")
-            if ts:
-                if isinstance(ts, str):
-                    try:
-                        ts = datetime.fromisoformat(ts)
-                    except:
-                        continue
-                if ts.tzinfo is None:
-                    ts = pytz.UTC.localize(ts).astimezone(BAKU_TZ)
-                else:
-                    ts = ts.astimezone(BAKU_TZ)
-                ans["timestamp"] = ts
-            all_answers.append(ans)
-    return all_answers
+    # Bütün cavabları bir-bir yox, toplu şəkildə (cursor vasitəsilə) çəkirik
+    def get_data():
+        for coll in [answers10, answers11]:
+            for ans in coll.find(query, projection):
+                # Timestamp çevirmə məntiqin olduğu kimi qalır
+                ts = ans.get("timestamp")
+                if ts:
+                    if isinstance(ts, str):
+                        try: ts = datetime.fromisoformat(ts)
+                        except: continue
+                    ans["timestamp"] = ts.astimezone(BAKU_TZ) if ts.tzinfo else pytz.UTC.localize(ts).astimezone(BAKU_TZ)
+                yield ans
+
+    # Siyahı yaratmadan birbaşa DataFrame-ə çeviririk (RAM-a qənaət)
+    return pd.DataFrame.from_records(get_data())
 
 def _prepare_students():
     students = {}
