@@ -11,8 +11,11 @@ app = Flask(__name__)
 # --- Bakı vaxt qurşağı ---
 BAKU_TZ = pytz.timezone("Asia/Baku")
 
-# --- MongoDB qoşulmalar ---
-MONGO_URI = "mongodb+srv://erlams:erlams423@cluster0.wwpua.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URI = os.environ.get("MONGO_URI")
+
+if not MONGO_URI:
+    raise RuntimeError("MONGO_URI environment variable is not set")
+
 client = MongoClient(MONGO_URI)
 
 # telegram_bot_10
