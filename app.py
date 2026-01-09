@@ -262,7 +262,7 @@ def get_quizz_data():
 def index():
     daily = get_daily_report()
     weekly = get_weekly_report()
-    overall = get_overall_report()
+    # overall = get_overall_report()
     quizz_data = get_quizz_data()
     
     return render_template(
