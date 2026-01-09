@@ -269,7 +269,7 @@ def index():
         "index.html",
         daily=daily.to_dict(orient="records") if not daily.empty else [],
         weekly=weekly.to_dict(orient="records") if not weekly.empty else [],
-        overall=overall.to_dict(orient="records") if not overall.empty else [],
+        # overall=overall.to_dict(orient="records") if not overall.empty else [],
         table_data=quizz_data.to_dict(orient="records") if not quizz_data.empty else [],
     )
 
