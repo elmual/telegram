@@ -152,13 +152,24 @@ def get_quizz_data():
     if not os.path.exists(file_path): return pd.DataFrame()
     try:
         df = pd.read_excel(file_path)
+        # Sütun adını təyin edirik
         df = df.rename(columns={df.columns[0]: "Abituriyentlərin ad və soyadı"})
+        
+        # Test sütunlarını rəqəmə çeviririk və ortalamanı hesablayırıq
         test_cols = [c for c in df.columns if c not in ["Abituriyentlərin ad və soyadı", "Ortalama"]]
         df[test_cols] = df[test_cols].apply(pd.to_numeric, errors="coerce")
         df["Ortalama imtahan nəticəsi %"] = df[test_cols].mean(axis=1).round(2)
+
+        # ƏVVƏLCƏ: Nəticəyə görə sıralayırıq
+        df = df.sort_values(by="Ortalama imtahan nəticəsi %", ascending=False).reset_index(drop=True)
+
+        # SONRA: Sıra nömrəsini (1, 2, 3...) yeni ardıcıllığa görə veririk
         df.insert(0, "Sıra", range(1, len(df) + 1))
-        return df.sort_values(by="Ortalama imtahan nəticəsi %", ascending=False)
-    except: return pd.DataFrame()
+        
+        return df
+    except Exception as e:
+        print(f"Xəta: {e}")
+        return pd.DataFrame()
 
 @app.route("/")
 def index():
